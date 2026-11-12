@@ -4,7 +4,10 @@ import { renderAppRoutes, renderWithProviders } from "./render";
 
 describe("Application Smoke Test", () => {
   it("renders the root application route at '/' using renderAppRoutes", async () => {
-    const { router } = await renderAppRoutes({ initialEntries: ["/"] });
+    const { router } = await renderAppRoutes({
+      initialEntries: ["/"],
+      user: { id: "test-user-1", name: "Test User", email: "test@example.com" },
+    });
 
     expect(router.state.location.pathname).toBe("/");
     expect(await screen.findByRole("heading", { name: /tanstack-open-api/i })).toBeInTheDocument();

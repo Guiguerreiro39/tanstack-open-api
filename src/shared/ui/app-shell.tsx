@@ -14,6 +14,12 @@ export interface AppShellProps {
   children: React.ReactNode;
   navItems?: NavItem[];
   userMenuSlot?: React.ReactNode;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: string | null;
+  } | null;
   className?: string;
 }
 

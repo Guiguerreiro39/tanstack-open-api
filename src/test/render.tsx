@@ -64,7 +64,7 @@ export async function renderAppRoutes(options: RenderAppOptions = {}) {
 
   await router.load();
 
-  const userActor = userEvent.setup();
+  const userActor = userEvent.setup({ delay: null });
   const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -116,7 +116,7 @@ export async function renderWithProviders(ui: React.ReactElement, options: Rende
 
   await router.load();
 
-  const userActor = userEvent.setup();
+  const userActor = userEvent.setup({ delay: null });
   const view = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

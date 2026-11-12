@@ -5,6 +5,14 @@ import { MockEventSource } from "./mock-event-source";
 import { server } from "./msw-server";
 
 beforeAll(() => {
+  const win =
+    typeof window !== "undefined"
+      ? (window as unknown as { happyDOM?: { settings: Record<string, boolean> } })
+      : undefined;
+  if (win?.happyDOM) {
+    win.happyDOM.settings.disableCSSFileLoading = true;
+    win.happyDOM.settings.handleDisabledFileLoadingAsSuccess = true;
+  }
   server.listen({ onUnhandledRequest: "error" });
   Object.defineProperty(globalThis, "EventSource", {
     writable: true,

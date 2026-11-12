@@ -5,7 +5,7 @@ export interface TestAuthUser {
   id: string;
   name: string;
   email: string;
-  role?: "user" | "admin";
+  role?: "admin" | "member" | "viewer" | "user" | string;
   image?: string | null;
 }
 
@@ -18,16 +18,34 @@ export const defaultHandlers = [
   http.get("https://fonts.gstatic.com/*", () => {
     return new HttpResponse("", { headers: { "content-type": "font/woff2" } });
   }),
-  http.get("*.css", () => {
+  http.get("http://localhost:3000/*.css", () => {
     return new HttpResponse("", { headers: { "content-type": "text/css" } });
   }),
-  http.get("*/src/styles/*", () => {
+  http.get("http://localhost:3000/src/styles/*", () => {
+    return new HttpResponse("", { headers: { "content-type": "text/css" } });
+  }),
+  http.get("http://localhost:3001/*.css", () => {
+    return new HttpResponse("", { headers: { "content-type": "text/css" } });
+  }),
+  http.get("http://localhost:3001/src/styles/*", () => {
     return new HttpResponse("", { headers: { "content-type": "text/css" } });
   }),
   http.get(`${API_BASE}/api/auth/get-session`, () => {
     return HttpResponse.json(null);
   }),
+  http.get("http://localhost:3000/api/auth/get-session", () => {
+    return HttpResponse.json(null);
+  }),
+  http.get("http://localhost:3001/api/auth/get-session", () => {
+    return HttpResponse.json(null);
+  }),
   http.post(`${API_BASE}/api/auth/sign-out`, () => {
+    return HttpResponse.json({ success: true });
+  }),
+  http.post("http://localhost:3000/api/auth/sign-out", () => {
+    return HttpResponse.json({ success: true });
+  }),
+  http.post("http://localhost:3001/api/auth/sign-out", () => {
     return HttpResponse.json({ success: true });
   }),
   http.get("/api/auth/get-session", () => {
@@ -70,6 +88,8 @@ export function mockAuthSession(user: TestAuthUser | null) {
 
   server.use(
     http.get(`${API_BASE}/api/auth/get-session`, handler),
+    http.get("http://localhost:3000/api/auth/get-session", handler),
+    http.get("http://localhost:3001/api/auth/get-session", handler),
     http.get("/api/auth/get-session", handler),
   );
 }
