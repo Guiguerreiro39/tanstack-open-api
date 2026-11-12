@@ -1,0 +1,21 @@
+---
+status: accepted
+---
+
+# Better Auth client integration, Query-backed SSR/client route guards, and shared RBAC helpers
+
+We configure `authClient` in `src/shared/lib/auth-client.ts` using `createAuthClient` from `better-auth/react` with `baseURL: resolveApiUrl()`, `fetchOptions: { credentials: "include" }` (plus optional bearer token injection aligned with `customFetch`), and `adminClient({ ac, roles })` from `better-auth/client/plugins` backed by shared access-control definitions in `src/shared/lib/rbac.ts`. TanStack Query acts as the single source of truth for authentication state via `authSessionQueryOptions` (`queryKey: ["auth", "session"]`, `staleTime: 5 * 60 * 1000`, `gcTime: 30 * 60 * 1000`) in `src/features/auth/api/session.ts`, using `createIsomorphicFn` to forward incoming `cookie` and `authorization` request headers during SSR and decoding `{ user, session }` through Effect `Schema`. Pathless layout route `src/routes/_app.tsx` guards protected routes via `queryClient.ensureQueryData(authSessionQueryOptions)` and injects non-nullable `{ user, session }` into `RouterAppContext`, while `src/routes/login.tsx` sanitizes `search.redirect` against protocol-relative URLs, `QueryCache`/`MutationCache` handle runtime `401` expiry separately from `403` permission refusals, and `src/shared/lib/rbac.ts` + `src/shared/ui/can.tsx` expose pure role, permission, and owner-vs-`:any` resource checks across slices.
+
+## Considered Options
+
+- **Calling `authClient.getSession()` in route `beforeLoad` while components call Better Auth's Nano Stores `useSession()` hook**: Rejected because it splits session state across two caches, triggers duplicate `/api/auth/get-session` requests on hydration and every route navigation, and fails to forward browser cookies during TanStack Start SSR.
+- **Placing auth guards on individual leaf routes (`src/routes/_app/index.tsx`) and reloading the page (`location.reload()`) on sign-out**: Rejected because leaf guards risk unprotected sibling routes and repeat boilerplate, while `location.reload()` discards SPA transition state instead of clearing `QueryClient` and calling `router.invalidate()`.
+- **Treating both `401 Unauthorized` and `403 Forbidden` as session-expiry redirects to `/login`**: Rejected because `403 Forbidden` indicates an authenticated user lacking a required role or `:any` permission; redirecting to `/login` on `403` traps authenticated non-admin users in a misleading login flow instead of surfacing an in-place permission error.
+- **Placing RBAC statements and ownership predicates inside `src/features/auth/`**: Rejected because `ADR-0001` bans cross-slice imports (`src/features/tasks` and `src/features/files` cannot import `src/features/auth`); keeping the pure RBAC catalog and predicates in `src/shared/lib/rbac.ts` and `<Can />` in `src/shared/ui/can.tsx` preserves strict FSD layer boundaries.
+
+## Consequences
+
+- `authSessionQueryOptions` replaces direct `authClient.useSession()` calls across the app; `GET /api/v1/me` and `PATCH /api/v1/me` use Orval-generated Effect `Contract`s (`defineContract`) for profile management, and `PATCH /api/v1/me` invalidates both the `/api/v1/me` query and `authSessionQueryOptions.queryKey`.
+- Sign-in and sign-up invalidate `authSessionQueryOptions.queryKey`, run `await router.invalidate()`, and navigate to `sanitizeRedirect(redirectTo)`; sign-out calls `queryClient.clear()`, sets `authSessionQueryOptions.queryKey` to `null` so cached `tasks`/`files` never leak across user accounts, invalidates the router, and navigates to `/login`.
+- Global `QueryCache.onError` and `MutationCache.onError` hooks in `getRouter` reset `authSessionQueryOptions` to `null` and invalidate the router on `401` (`UnauthorizedError`), while skipping automatic retries on `401`, `403`, `404`, and `422`.
+- `src/shared/lib/rbac.ts` exports `RBAC_STATEMENTS`, `ROLE_STATEMENTS`, `hasRole`, `isAdmin`, `hasPermission`, `canAccessResource(user, resource, type, action)` (encapsulating `(resource.userId === user.id && hasPermission(action)) || hasPermission(`${action}:any`)`), and `requirePermission(user, permissions)` (throwing `ForbiddenError` for route error boundaries), paired with `<Can />` in `src/shared/ui/can.tsx`.
