@@ -1,5 +1,6 @@
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
+import { ObservabilityPort } from "@/shared/observability";
 import { createAppRuntime } from "../runtime";
 
 describe("App Runtime Composition", () => {
@@ -23,5 +24,13 @@ describe("App Runtime Composition", () => {
     const runtime = createAppRuntime(customLayer);
     const result = await runtime.runPromise(Effect.succeed("custom"));
     expect(result).toBe("custom");
+  });
+
+  it("provides ObservabilityPort in runtime by default", async () => {
+    const runtime = createAppRuntime();
+    const observability = await runtime.runPromise(ObservabilityPort);
+    expect(observability).toBeDefined();
+    expect(typeof observability.captureDefect).toBe("function");
+    expect(typeof observability.recordBreadcrumb).toBe("function");
   });
 });
