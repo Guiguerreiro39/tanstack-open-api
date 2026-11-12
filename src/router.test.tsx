@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import { createAppRuntime } from "./app/runtime";
 import { getRouter } from "./router";
+import { createSpyObservability } from "./test/spy-observability";
 
 describe("Router Composition Root (getRouter)", () => {
   it("creates an isolated Router instance with QueryClient and Effect ManagedRuntime", () => {
@@ -40,5 +41,11 @@ describe("Router Composition Root (getRouter)", () => {
   it("wires setupRouterSsrQueryIntegration (options.Wrap exists)", () => {
     const router = getRouter();
     expect(typeof router.options.Wrap).toBe("function");
+  });
+
+  it("calls initRouter on provided observability service", () => {
+    const spy = createSpyObservability();
+    const router = getRouter({ observability: spy });
+    expect(spy.instrumentedRouters).toContain(router);
   });
 });

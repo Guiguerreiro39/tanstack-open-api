@@ -3,10 +3,12 @@ import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { type AppRuntime, createAppRuntime } from "./app/runtime";
 import { routeTree } from "./routeTree.gen";
+import type { ObservabilityService } from "./shared/observability";
 
 export interface RouterOptions {
   queryClient?: QueryClient;
   runtime?: AppRuntime;
+  observability?: ObservabilityService;
 }
 
 export function getRouter(options: RouterOptions = {}) {
@@ -20,7 +22,8 @@ export function getRouter(options: RouterOptions = {}) {
       },
     });
 
-  const runtime = options.runtime ?? createAppRuntime();
+  const observability = options.observability;
+  const runtime = options.runtime ?? createAppRuntime(undefined, { observability });
 
   const router = createTanStackRouter({
     routeTree,
@@ -29,6 +32,8 @@ export function getRouter(options: RouterOptions = {}) {
     defaultPreloadStaleTime: 0,
     scrollRestoration: true,
   });
+
+  observability?.initRouter?.(router);
 
   setupRouterSsrQueryIntegration({
     router,

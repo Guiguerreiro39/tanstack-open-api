@@ -12,7 +12,9 @@ import type React from "react";
 import { type AppRuntime, createAppRuntime } from "@/app/runtime";
 import type { RouterAppContext } from "@/routes/__root";
 import { routeTree } from "@/routeTree.gen";
+import type { ObservabilityService } from "@/shared/observability";
 import { mockAuthSession, type TestAuthUser } from "./msw-server";
+import { createSpyObservability } from "./spy-observability";
 
 export function createTestQueryClient() {
   return new QueryClient({
@@ -34,14 +36,16 @@ export interface RenderAppOptions extends Omit<RenderOptions, "wrapper"> {
   user?: TestAuthUser | null;
   queryClient?: QueryClient;
   runtime?: AppRuntime;
+  observability?: ObservabilityService;
 }
 
 export async function renderAppRoutes(options: RenderAppOptions = {}) {
+  const observability = options.observability ?? createSpyObservability();
   const {
     initialEntries = ["/"],
     user = null,
     queryClient = createTestQueryClient(),
-    runtime = createAppRuntime(),
+    runtime = createAppRuntime(undefined, { observability }),
     ...renderOptions
   } = options;
 
@@ -55,6 +59,8 @@ export async function renderAppRoutes(options: RenderAppOptions = {}) {
     defaultPendingMinMs: 0,
     defaultPreloadStaleTime: 0,
   });
+
+  observability.initRouter?.(router);
 
   await router.load();
 
@@ -72,15 +78,17 @@ export async function renderAppRoutes(options: RenderAppOptions = {}) {
     router,
     queryClient,
     runtime,
+    observability,
   };
 }
 
 export async function renderWithProviders(ui: React.ReactElement, options: RenderAppOptions = {}) {
+  const observability = options.observability ?? createSpyObservability();
   const {
     initialEntries = ["/"],
     user = null,
     queryClient = createTestQueryClient(),
-    runtime = createAppRuntime(),
+    runtime = createAppRuntime(undefined, { observability }),
     ...renderOptions
   } = options;
 
@@ -104,6 +112,8 @@ export async function renderWithProviders(ui: React.ReactElement, options: Rende
     defaultPendingMinMs: 0,
   });
 
+  observability.initRouter?.(router);
+
   await router.load();
 
   const userActor = userEvent.setup();
@@ -120,5 +130,6 @@ export async function renderWithProviders(ui: React.ReactElement, options: Rende
     router,
     queryClient,
     runtime,
+    observability,
   };
 }
