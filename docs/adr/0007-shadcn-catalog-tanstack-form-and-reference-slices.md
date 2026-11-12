@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Complete `new-york-v4` `shadcn/ui` catalog, `useAppForm` `Field` composition, and reference slices (`auth`, `tasks`, `files`, `showcase`)
 

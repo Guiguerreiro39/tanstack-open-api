@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Frontend `ObservabilityPort` seam, Sentry & Datadog browser adapters, and W3C `traceparent` correlation
 

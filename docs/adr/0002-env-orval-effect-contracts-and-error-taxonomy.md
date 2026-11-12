@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Split client/SSR Effect environment config, dual-target Orval v8 codegen, and typed HTTP error taxonomy
 

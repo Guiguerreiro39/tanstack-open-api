@@ -53,114 +53,114 @@ Data below is cross-referenced directly from `@shadcn` MCP (`list_items_in_regis
 
 #### A. Core Actions & Inline Primitives (7 components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `button` | `registry:ui` | `radix-ui` (or `@radix-ui/react-slot`), `class-variance-authority` | — | Installed in `forklore-fe` (`src/shared/ui/button.tsx`). Uses `Slot` for `asChild`. |
-| `button-group` | `registry:ui` | `radix-ui` | `button`, `separator` | New in v4 registry; groups buttons with shared borders/radii via `*:data-[slot=button]`. |
-| `badge` | `registry:ui` | `radix-ui`, `class-variance-authority` | — | Supports `asChild` via `Slot`; ideal for recipe dietary/status tags. |
-| `toggle` | `registry:ui` | `radix-ui`, `class-variance-authority` | — | Two-state press button (`data-[state=on]`). |
-| `toggle-group` | `registry:ui` | `radix-ui` | `toggle` | Single or multiple toggle bar (`Unit: Metric / Imperial` switcher). |
-| `kbd` | `registry:ui` | — | — | Semantic `<kbd>` shortcut keycap component (`⌘K`). |
-| `spinner` | `registry:ui` | `class-variance-authority` | — | Official accessible SVG loading spinner replacing custom `loader.tsx`. |
+| Registry Name  | Type          | NPM Peer Dependencies (`new-york-v4`)                              | Registry Dependencies | React 19 / Tailwind v4 Notes                                                             |
+| :------------- | :------------ | :----------------------------------------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------- |
+| `button`       | `registry:ui` | `radix-ui` (or `@radix-ui/react-slot`), `class-variance-authority` | —                     | Installed in `forklore-fe` (`src/shared/ui/button.tsx`). Uses `Slot` for `asChild`.      |
+| `button-group` | `registry:ui` | `radix-ui`                                                         | `button`, `separator` | New in v4 registry; groups buttons with shared borders/radii via `*:data-[slot=button]`. |
+| `badge`        | `registry:ui` | `radix-ui`, `class-variance-authority`                             | —                     | Supports `asChild` via `Slot`; ideal for recipe dietary/status tags.                     |
+| `toggle`       | `registry:ui` | `radix-ui`, `class-variance-authority`                             | —                     | Two-state press button (`data-[state=on]`).                                              |
+| `toggle-group` | `registry:ui` | `radix-ui`                                                         | `toggle`              | Single or multiple toggle bar (`Unit: Metric / Imperial` switcher).                      |
+| `kbd`          | `registry:ui` | —                                                                  | —                     | Semantic `<kbd>` shortcut keycap component (`⌘K`).                                       |
+| `spinner`      | `registry:ui` | `class-variance-authority`                                         | —                     | Official accessible SVG loading spinner replacing custom `loader.tsx`.                   |
 
 #### B. Layout, Surfaces & Containers (8 components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `card` | `registry:ui` | — | — | Installed in `forklore-fe` (`src/shared/ui/card.tsx`). Includes `CardAction` and `@container/card-header`. |
-| `separator` | `registry:ui` | `radix-ui` | — | Horizontal/vertical divider using `bg-border`. |
-| `aspect-ratio` | `registry:ui` | `radix-ui` | — | Preserves media aspect ratios (`9/16` reel container, `16/9` video). |
-| `resizable` | `registry:ui` | `react-resizable-panels@^4` | — | Split-pane resizable layout (`ResizablePanelGroup`, `ResizablePanel`, `ResizableHandle`). |
-| `scroll-area` | `registry:ui` | `radix-ui` | — | Custom cross-browser scrollbars for ingredient lists or transcripts. |
-| `collapsible` | `registry:ui` | `radix-ui` | — | Expand/collapse primitive (`CollapsibleTrigger`, `CollapsibleContent`). |
-| `accordion` | `registry:ui` | `radix-ui` | — | Uses `accordion-down`/`accordion-up` keyframes from `shadcn/tailwind.css`. |
-| `direction` | `registry:ui` | `@base-ui/react` / `radix-ui` | — | LTR/RTL direction provider wrapper. |
+| Registry Name  | Type          | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes                                                                               |
+| :------------- | :------------ | :------------------------------------ | :-------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `card`         | `registry:ui` | —                                     | —                     | Installed in `forklore-fe` (`src/shared/ui/card.tsx`). Includes `CardAction` and `@container/card-header`. |
+| `separator`    | `registry:ui` | `radix-ui`                            | —                     | Horizontal/vertical divider using `bg-border`.                                                             |
+| `aspect-ratio` | `registry:ui` | `radix-ui`                            | —                     | Preserves media aspect ratios (`9/16` reel container, `16/9` video).                                       |
+| `resizable`    | `registry:ui` | `react-resizable-panels@^4`           | —                     | Split-pane resizable layout (`ResizablePanelGroup`, `ResizablePanel`, `ResizableHandle`).                  |
+| `scroll-area`  | `registry:ui` | `radix-ui`                            | —                     | Custom cross-browser scrollbars for ingredient lists or transcripts.                                       |
+| `collapsible`  | `registry:ui` | `radix-ui`                            | —                     | Expand/collapse primitive (`CollapsibleTrigger`, `CollapsibleContent`).                                    |
+| `accordion`    | `registry:ui` | `radix-ui`                            | —                     | Uses `accordion-down`/`accordion-up` keyframes from `shadcn/tailwind.css`.                                 |
+| `direction`    | `registry:ui` | `@base-ui/react` / `radix-ui`         | —                     | LTR/RTL direction provider wrapper.                                                                        |
 
 #### C. Navigation & Application Chrome (6 components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `sidebar` | `registry:ui` | `radix-ui`, `class-variance-authority`, `lucide-react` | `button`, `separator`, `sheet`, `tooltip`, `input`, `use-mobile`, `skeleton` | Full collapsible app shell driven by `--sidebar-*` theme tokens. |
-| `navigation-menu` | `registry:ui` | `radix-ui` | — | Top-level header navigation with animated viewport popovers. |
-| `menubar` | `registry:ui` | `radix-ui` | `dropdown-menu` | Desktop application menu bar. |
-| `breadcrumb` | `registry:ui` | `radix-ui` | — | Composable trail (`BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbSeparator`). |
-| `tabs` | `registry:ui` | `radix-ui` | — | Tabbed interface (`TabsList`, `TabsTrigger`, `TabsContent`). |
-| `pagination` | `registry:ui` | — | `button` | Link-based pagination compatible with TanStack Router `<Link>`. |
+| Registry Name     | Type          | NPM Peer Dependencies (`new-york-v4`)                  | Registry Dependencies                                                        | React 19 / Tailwind v4 Notes                                                  |
+| :---------------- | :------------ | :----------------------------------------------------- | :--------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `sidebar`         | `registry:ui` | `radix-ui`, `class-variance-authority`, `lucide-react` | `button`, `separator`, `sheet`, `tooltip`, `input`, `use-mobile`, `skeleton` | Full collapsible app shell driven by `--sidebar-*` theme tokens.              |
+| `navigation-menu` | `registry:ui` | `radix-ui`                                             | —                                                                            | Top-level header navigation with animated viewport popovers.                  |
+| `menubar`         | `registry:ui` | `radix-ui`                                             | `dropdown-menu`                                                              | Desktop application menu bar.                                                 |
+| `breadcrumb`      | `registry:ui` | `radix-ui`                                             | —                                                                            | Composable trail (`BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbSeparator`). |
+| `tabs`            | `registry:ui` | `radix-ui`                                             | —                                                                            | Tabbed interface (`TabsList`, `TabsTrigger`, `TabsContent`).                  |
+| `pagination`      | `registry:ui` | —                                                      | `button`                                                                     | Link-based pagination compatible with TanStack Router `<Link>`.               |
 
 #### D. Forms, Inputs & Selection Controls (15 components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `field` | `registry:ui` | `class-variance-authority` | `label`, `separator` | **Preferred for TanStack Form:** Schema-library-agnostic `Field`, `FieldLabel`, `FieldDescription`, `FieldError`, `FieldGroup`, `FieldSet`. |
-| `form` | `registry:ui` | `radix-ui`, `react-hook-form`, `@hookform/resolvers`, `zod` | `button`, `label` | Coupled to `react-hook-form`. Since `forklore-fe` uses `@tanstack/react-form` + `effect/Schema`, prefer `field` over `form`. |
-| `label` | `registry:ui` | `radix-ui` | — | Installed in `forklore-fe` (`src/shared/ui/label.tsx`). |
-| `input` | `registry:ui` | — | — | Installed in `forklore-fe` (`src/shared/ui/input.tsx`). |
-| `input-group` | `registry:ui` | — | `button`, `input`, `textarea` | Composable input with prefix/suffix addons & inline action buttons (ideal for Reel URL extractor bar). |
-| `input-otp` | `registry:ui` | `input-otp` | — | One-time passcode segmented input (`input-otp` v1.4+ supports React 19). |
-| `textarea` | `registry:ui` | — | — | Auto-sizing capable multi-line text input (`field-sizing-content`). |
-| `checkbox` | `registry:ui` | `radix-ui` | — | Installed in `forklore-fe` (`src/shared/ui/checkbox.tsx`). |
-| `radio-group` | `registry:ui` | `radix-ui` | — | Single-choice radio buttons. |
-| `switch` | `registry:ui` | `radix-ui` | — | Toggle switch control. |
-| `slider` | `registry:ui` | `radix-ui` | — | Range/scrubbing slider (ideal for audio/video seek bar or serving scaler). |
-| `select` | `registry:ui` | `radix-ui` | — | Custom popover select menu. |
-| `native-select` | `registry:ui` | — | — | Styled native `<select>` element for mobile/SSR ergonomics. |
-| `combobox` | `registry:ui` | `@base-ui/react` | `button`, `input-group` | Autocomplete / searchable select powered by `@base-ui/react` in `new-york-v4` (or `popover` + `command`). |
-| `calendar` | `registry:ui` | `react-day-picker@latest`, `date-fns` | `button` | Uses `react-day-picker` v9 (`@latest`), which has native React 19 support. Pair with `popover` for Date Picker. |
+| Registry Name   | Type          | NPM Peer Dependencies (`new-york-v4`)                       | Registry Dependencies         | React 19 / Tailwind v4 Notes                                                                                                                |
+| :-------------- | :------------ | :---------------------------------------------------------- | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| `field`         | `registry:ui` | `class-variance-authority`                                  | `label`, `separator`          | **Preferred for TanStack Form:** Schema-library-agnostic `Field`, `FieldLabel`, `FieldDescription`, `FieldError`, `FieldGroup`, `FieldSet`. |
+| `form`          | `registry:ui` | `radix-ui`, `react-hook-form`, `@hookform/resolvers`, `zod` | `button`, `label`             | Coupled to `react-hook-form`. Since `forklore-fe` uses `@tanstack/react-form` + `effect/Schema`, prefer `field` over `form`.                |
+| `label`         | `registry:ui` | `radix-ui`                                                  | —                             | Installed in `forklore-fe` (`src/shared/ui/label.tsx`).                                                                                     |
+| `input`         | `registry:ui` | —                                                           | —                             | Installed in `forklore-fe` (`src/shared/ui/input.tsx`).                                                                                     |
+| `input-group`   | `registry:ui` | —                                                           | `button`, `input`, `textarea` | Composable input with prefix/suffix addons & inline action buttons (ideal for Reel URL extractor bar).                                      |
+| `input-otp`     | `registry:ui` | `input-otp`                                                 | —                             | One-time passcode segmented input (`input-otp` v1.4+ supports React 19).                                                                    |
+| `textarea`      | `registry:ui` | —                                                           | —                             | Auto-sizing capable multi-line text input (`field-sizing-content`).                                                                         |
+| `checkbox`      | `registry:ui` | `radix-ui`                                                  | —                             | Installed in `forklore-fe` (`src/shared/ui/checkbox.tsx`).                                                                                  |
+| `radio-group`   | `registry:ui` | `radix-ui`                                                  | —                             | Single-choice radio buttons.                                                                                                                |
+| `switch`        | `registry:ui` | `radix-ui`                                                  | —                             | Toggle switch control.                                                                                                                      |
+| `slider`        | `registry:ui` | `radix-ui`                                                  | —                             | Range/scrubbing slider (ideal for audio/video seek bar or serving scaler).                                                                  |
+| `select`        | `registry:ui` | `radix-ui`                                                  | —                             | Custom popover select menu.                                                                                                                 |
+| `native-select` | `registry:ui` | —                                                           | —                             | Styled native `<select>` element for mobile/SSR ergonomics.                                                                                 |
+| `combobox`      | `registry:ui` | `@base-ui/react`                                            | `button`, `input-group`       | Autocomplete / searchable select powered by `@base-ui/react` in `new-york-v4` (or `popover` + `command`).                                   |
+| `calendar`      | `registry:ui` | `react-day-picker@latest`, `date-fns`                       | `button`                      | Uses `react-day-picker` v9 (`@latest`), which has native React 19 support. Pair with `popover` for Date Picker.                             |
 
 #### E. Overlays, Dialogs & Contextual Menus (10 components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `dialog` | `registry:ui` | `radix-ui` | `button` | Modal dialog overlay. |
-| `alert-dialog` | `registry:ui` | `radix-ui` | `button` | Interruptive confirmation modal (e.g., delete recipe confirmation). |
-| `sheet` | `registry:ui` | `radix-ui` | `button` | Side-docked drawer (`top`, `right`, `bottom`, `left`) built on Dialog. |
-| `drawer` | `registry:ui` | `vaul` (or `@base-ui/react`) | — | Touch-draggable bottom drawer (`vaul` v1.1+ for React 19). |
-| `popover` | `registry:ui` | `radix-ui` | — | Floating anchored content panel. |
-| `hover-card` | `registry:ui` | `radix-ui` | — | Hover-triggered preview card (e.g., ingredient substitution preview). |
-| `tooltip` | `registry:ui` | `radix-ui` | — | Accessible hover/focus tooltip (`TooltipProvider` integrated in v4). |
-| `dropdown-menu` | `registry:ui` | `radix-ui` | — | Installed in `forklore-fe` (`src/shared/ui/dropdown-menu.tsx`). |
-| `context-menu` | `registry:ui` | `radix-ui` | — | Right-click / long-press menu. |
-| `command` | `registry:ui` | `cmdk` | `dialog`, `input-group` | Command palette (`⌘K`) and filterable list (`cmdk` v1.1+). |
+| Registry Name   | Type          | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies   | React 19 / Tailwind v4 Notes                                           |
+| :-------------- | :------------ | :------------------------------------ | :---------------------- | :--------------------------------------------------------------------- |
+| `dialog`        | `registry:ui` | `radix-ui`                            | `button`                | Modal dialog overlay.                                                  |
+| `alert-dialog`  | `registry:ui` | `radix-ui`                            | `button`                | Interruptive confirmation modal (e.g., delete recipe confirmation).    |
+| `sheet`         | `registry:ui` | `radix-ui`                            | `button`                | Side-docked drawer (`top`, `right`, `bottom`, `left`) built on Dialog. |
+| `drawer`        | `registry:ui` | `vaul` (or `@base-ui/react`)          | —                       | Touch-draggable bottom drawer (`vaul` v1.1+ for React 19).             |
+| `popover`       | `registry:ui` | `radix-ui`                            | —                       | Floating anchored content panel.                                       |
+| `hover-card`    | `registry:ui` | `radix-ui`                            | —                       | Hover-triggered preview card (e.g., ingredient substitution preview).  |
+| `tooltip`       | `registry:ui` | `radix-ui`                            | —                       | Accessible hover/focus tooltip (`TooltipProvider` integrated in v4).   |
+| `dropdown-menu` | `registry:ui` | `radix-ui`                            | —                       | Installed in `forklore-fe` (`src/shared/ui/dropdown-menu.tsx`).        |
+| `context-menu`  | `registry:ui` | `radix-ui`                            | —                       | Right-click / long-press menu.                                         |
+| `command`       | `registry:ui` | `cmdk`                                | `dialog`, `input-group` | Command palette (`⌘K`) and filterable list (`cmdk` v1.1+).             |
 
 #### F. Feedback, Status & Empty States (5 components + 1 legacy index item)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `alert` | `registry:ui` | `class-variance-authority` | — | Inline callout banner (`AlertTitle`, `AlertDescription`). |
-| `sonner` | `registry:ui` | `sonner`, `next-themes` | — | Installed in `forklore-fe` (`src/shared/ui/sonner.tsx`). |
-| `progress` | `registry:ui` | `radix-ui` | — | Determinate progress bar (e.g., reel extraction progress). |
-| `skeleton` | `registry:ui` | — | — | Installed in `forklore-fe` (`src/shared/ui/skeleton.tsx`). |
-| `empty` | `registry:ui` | — | — | Structured empty state (`Empty`, `EmptyHeader`, `EmptyMedia`, `EmptyTitle`, `EmptyDescription`, `EmptyContent`). |
-| `toast` *(legacy)* | `registry:ui` | `@base-ui/react` / `radix-ui` | `button` | Present in `r/index.json` only (not in `new-york-v4`); superseded by `sonner`. |
+| Registry Name      | Type          | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes                                                                                     |
+| :----------------- | :------------ | :------------------------------------ | :-------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| `alert`            | `registry:ui` | `class-variance-authority`            | —                     | Inline callout banner (`AlertTitle`, `AlertDescription`).                                                        |
+| `sonner`           | `registry:ui` | `sonner`, `next-themes`               | —                     | Installed in `forklore-fe` (`src/shared/ui/sonner.tsx`).                                                         |
+| `progress`         | `registry:ui` | `radix-ui`                            | —                     | Determinate progress bar (e.g., reel extraction progress).                                                       |
+| `skeleton`         | `registry:ui` | —                                     | —                     | Installed in `forklore-fe` (`src/shared/ui/skeleton.tsx`).                                                       |
+| `empty`            | `registry:ui` | —                                     | —                     | Structured empty state (`Empty`, `EmptyHeader`, `EmptyMedia`, `EmptyTitle`, `EmptyDescription`, `EmptyContent`). |
+| `toast` _(legacy)_ | `registry:ui` | `@base-ui/react` / `radix-ui`         | `button`              | Present in `r/index.json` only (not in `new-york-v4`); superseded by `sonner`.                                   |
 
 #### G. Data Display, Lists, Media & Charts (5 components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `table` | `registry:ui` | — | — | Responsive semantic HTML table wrappers (`TableHeader`, `TableBody`, `TableRow`, `TableCell`). Pair with `@tanstack/react-table` for Data Tables. |
-| `item` | `registry:ui` | `radix-ui`, `class-variance-authority` | `separator` | Structured list row (`Item`, `ItemMedia`, `ItemContent`, `ItemTitle`, `ItemDescription`, `ItemActions`)—ideal for ingredient rows & step cards. |
-| `avatar` | `registry:ui` | `radix-ui` | — | User avatar with image & fallback initials (replaces custom span in `user-menu.tsx`). |
-| `carousel` | `registry:ui` | `embla-carousel-react` | `button` | Touch/keyboard carousel (`embla-carousel-react` v8.5+ supports React 19). |
-| `chart` | `registry:ui` | `recharts@3.8.0`, `lucide-react` | `card` | Uses **`recharts@3.8.0`** in `new-york-v4` (`ChartContainer`, `ChartTooltip`, `ChartLegend`), resolving Recharts 2's React 19 `react-is` peer dependency conflict. Driven by `--chart-1..5`. |
+| Registry Name | Type          | NPM Peer Dependencies (`new-york-v4`)  | Registry Dependencies | React 19 / Tailwind v4 Notes                                                                                                                                                                 |
+| :------------ | :------------ | :------------------------------------- | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `table`       | `registry:ui` | —                                      | —                     | Responsive semantic HTML table wrappers (`TableHeader`, `TableBody`, `TableRow`, `TableCell`). Pair with `@tanstack/react-table` for Data Tables.                                            |
+| `item`        | `registry:ui` | `radix-ui`, `class-variance-authority` | `separator`           | Structured list row (`Item`, `ItemMedia`, `ItemContent`, `ItemTitle`, `ItemDescription`, `ItemActions`)—ideal for ingredient rows & step cards.                                              |
+| `avatar`      | `registry:ui` | `radix-ui`                             | —                     | User avatar with image & fallback initials (replaces custom span in `user-menu.tsx`).                                                                                                        |
+| `carousel`    | `registry:ui` | `embla-carousel-react`                 | `button`              | Touch/keyboard carousel (`embla-carousel-react` v8.5+ supports React 19).                                                                                                                    |
+| `chart`       | `registry:ui` | `recharts@3.8.0`, `lucide-react`       | `card`                | Uses **`recharts@3.8.0`** in `new-york-v4` (`ChartContainer`, `ChartTooltip`, `ChartLegend`), resolving Recharts 2's React 19 `react-is` peer dependency conflict. Driven by `--chart-1..5`. |
 
 #### H. Conversational / AI & Rich Content Primitives (5 `new-york-v4` + 3 `index.json` components)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `message` | `registry:ui` | — | — | Chat/assistant message container (`@shadcn` registry). |
-| `message-scroller` | `registry:ui` | `@shadcn/react` | `button` | Auto-scrolling message stream container. |
-| `bubble` | `registry:ui` | `radix-ui` | — | Chat bubble primitive. |
-| `attachment` | `registry:ui` | `radix-ui` | `button` | Media/file attachment chip. |
-| `marker` | `registry:ui` | `radix-ui` | — | Annotated timeline/text marker. |
-| `code-block` | `registry:ui` | — | `button`, `use-highlighted-code` | Present in `r/index.json` (not in `new-york-v4`). |
-| `questionnaire` | `registry:ui` | `@shadcn/react` | `button` | Present in `r/index.json` (not in `new-york-v4`). |
-| `trace` | `registry:ui` | — | `collapsible` | Present in `r/index.json` (not in `new-york-v4`). |
+| Registry Name      | Type          | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies            | React 19 / Tailwind v4 Notes                           |
+| :----------------- | :------------ | :------------------------------------ | :------------------------------- | :----------------------------------------------------- |
+| `message`          | `registry:ui` | —                                     | —                                | Chat/assistant message container (`@shadcn` registry). |
+| `message-scroller` | `registry:ui` | `@shadcn/react`                       | `button`                         | Auto-scrolling message stream container.               |
+| `bubble`           | `registry:ui` | `radix-ui`                            | —                                | Chat bubble primitive.                                 |
+| `attachment`       | `registry:ui` | `radix-ui`                            | `button`                         | Media/file attachment chip.                            |
+| `marker`           | `registry:ui` | `radix-ui`                            | —                                | Annotated timeline/text marker.                        |
+| `code-block`       | `registry:ui` | —                                     | `button`, `use-highlighted-code` | Present in `r/index.json` (not in `new-york-v4`).      |
+| `questionnaire`    | `registry:ui` | `@shadcn/react`                       | `button`                         | Present in `r/index.json` (not in `new-york-v4`).      |
+| `trace`            | `registry:ui` | —                                     | `collapsible`                    | Present in `r/index.json` (not in `new-york-v4`).      |
 
 #### I. Official Registry Hooks (1 hook)
 
-| Registry Name | Type | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `use-mobile` | `registry:hook` | — | — | `useIsMobile()` matchMedia hook (`768px` breakpoint), required by `sidebar`. |
+| Registry Name | Type            | NPM Peer Dependencies (`new-york-v4`) | Registry Dependencies | React 19 / Tailwind v4 Notes                                                 |
+| :------------ | :-------------- | :------------------------------------ | :-------------------- | :--------------------------------------------------------------------------- |
+| `use-mobile`  | `registry:hook` | —                                     | —                     | `useIsMobile()` matchMedia hook (`768px` breakpoint), required by `sidebar`. |
 
 ---
 
@@ -170,17 +170,17 @@ Data below is cross-referenced directly from `@shadcn` MCP (`list_items_in_regis
 
 Inspecting the repository reveals that `DESIGN.md`, `src/index.css`, and `src/routes/__root.tsx` define three conflicting versions of the "Kitchen Playbook" palette and typography:
 
-| Token Concept | `DESIGN.md` Spec (`L3-L120`) | `src/index.css` (`L5-L127`) | `src/routes/__root.tsx` & Components |
-| :--- | :--- | :--- | :--- |
-| **Background / Surface** | `#fef8f4` (`surface` / `background`) | `--background: #fff8f3;`<br>`--surface: #fff8f3;` | `<body className="bg-[#fff8f3] text-[#1d1b18]">` (`__root.tsx#L70`) |
-| **Primary (Terracotta)** | `#a93201` (`primary`)<br>`#cb4a1b` (`primary-container`) | `--primary: #9f3c16;` | `bg-[#9f3c16] hover:bg-[#bf542c]` (`sign-in-form.tsx#L129`) |
-| **Secondary (Sage)** | `#3d6846` (`secondary`)<br>`#bcebc0` (`secondary-container`) | `--secondary: #436558;`<br>`--accent: #c2e8d7;` | `bg-[#436558]` (`ingredients-checklist.tsx#L99`)<br>`bg-[#c2e8d7] text-[#476a5c]` (`recipe-stepper.tsx#L119`) |
-| **Tertiary (Maize)** | `#715c00` (`tertiary`)<br>`#c7a938` (`tertiary-container`)<br>`#ffe17a` (`tertiary-fixed`) | *Completely missing* | *Unusable via semantic classes* |
-| **Surface Containers** | `lowest`: `#ffffff`<br>`low`: `#f8f2ef`<br>`DEFAULT`: `#f3ede9`<br>`high`: `#ede7e3`<br>`highest`: `#e7e1de` | `--surface-low: #f9f2ed;` *(not in `@theme`)*<br>`--surface-container: #f3ede7;` *(not in `@theme`)*<br>`--surface-container-high: #ede7e2;` *(not in `@theme`)* | Hardcoded `bg-[#f9f2ed]`, `bg-[#f3ede7]`, `hover:bg-[#ede7e2]` across 6 files |
-| **Outlines / Borders** | `outline`: `#8d7168`<br>`outline-variant`: `#e1bfb5` | `--border: #dec0b7;` | Hardcoded `border-[#dec0b7]/40`, `border-[#dec0b7]/60` across 8 files |
-| **Typography** | Exclusively `Quicksand` (`500`/`600`/`700`) | `--font-sans: "Inter Variable", sans-serif;` (`L88`) | Loads `Newsreader`, `Plus Jakarta Sans`, `Quicksand` (`__root.tsx#L45`); uses `font-serif` (`header.tsx#L19`, `recipe-workspace.tsx#L659`) which falls back to system Georgia! |
-| **Base Radius** | `sm`: `0.25rem`, `md`: `0.5rem`, `xl`: `0.75rem`, `2xl`: `1rem`, `3xl`: `1.5rem` | `--radius: 0.75rem;` (`rounded-none` hardcoded inside `src/shared/ui/card.tsx#L13`!) | Components manually override with `rounded-xl` and `rounded-2xl` |
-| **Shadows** | Chunky offset shadows (`4px 4px 0`, `6px 6px 0`, `0px 0px 0`) | Hardcoded `.chunky-shadow` class outside `@theme` (`L34-L51`) | Mixes `shadow-xs`, `shadow-sm`, and `.chunky-shadow` |
+| Token Concept            | `DESIGN.md` Spec (`L3-L120`)                                                                                 | `src/index.css` (`L5-L127`)                                                                                                                                      | `src/routes/__root.tsx` & Components                                                                                                                                           |
+| :----------------------- | :----------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Background / Surface** | `#fef8f4` (`surface` / `background`)                                                                         | `--background: #fff8f3;`<br>`--surface: #fff8f3;`                                                                                                                | `<body className="bg-[#fff8f3] text-[#1d1b18]">` (`__root.tsx#L70`)                                                                                                            |
+| **Primary (Terracotta)** | `#a93201` (`primary`)<br>`#cb4a1b` (`primary-container`)                                                     | `--primary: #9f3c16;`                                                                                                                                            | `bg-[#9f3c16] hover:bg-[#bf542c]` (`sign-in-form.tsx#L129`)                                                                                                                    |
+| **Secondary (Sage)**     | `#3d6846` (`secondary`)<br>`#bcebc0` (`secondary-container`)                                                 | `--secondary: #436558;`<br>`--accent: #c2e8d7;`                                                                                                                  | `bg-[#436558]` (`ingredients-checklist.tsx#L99`)<br>`bg-[#c2e8d7] text-[#476a5c]` (`recipe-stepper.tsx#L119`)                                                                  |
+| **Tertiary (Maize)**     | `#715c00` (`tertiary`)<br>`#c7a938` (`tertiary-container`)<br>`#ffe17a` (`tertiary-fixed`)                   | _Completely missing_                                                                                                                                             | _Unusable via semantic classes_                                                                                                                                                |
+| **Surface Containers**   | `lowest`: `#ffffff`<br>`low`: `#f8f2ef`<br>`DEFAULT`: `#f3ede9`<br>`high`: `#ede7e3`<br>`highest`: `#e7e1de` | `--surface-low: #f9f2ed;` _(not in `@theme`)_<br>`--surface-container: #f3ede7;` _(not in `@theme`)_<br>`--surface-container-high: #ede7e2;` _(not in `@theme`)_ | Hardcoded `bg-[#f9f2ed]`, `bg-[#f3ede7]`, `hover:bg-[#ede7e2]` across 6 files                                                                                                  |
+| **Outlines / Borders**   | `outline`: `#8d7168`<br>`outline-variant`: `#e1bfb5`                                                         | `--border: #dec0b7;`                                                                                                                                             | Hardcoded `border-[#dec0b7]/40`, `border-[#dec0b7]/60` across 8 files                                                                                                          |
+| **Typography**           | Exclusively `Quicksand` (`500`/`600`/`700`)                                                                  | `--font-sans: "Inter Variable", sans-serif;` (`L88`)                                                                                                             | Loads `Newsreader`, `Plus Jakarta Sans`, `Quicksand` (`__root.tsx#L45`); uses `font-serif` (`header.tsx#L19`, `recipe-workspace.tsx#L659`) which falls back to system Georgia! |
+| **Base Radius**          | `sm`: `0.25rem`, `md`: `0.5rem`, `xl`: `0.75rem`, `2xl`: `1rem`, `3xl`: `1.5rem`                             | `--radius: 0.75rem;` (`rounded-none` hardcoded inside `src/shared/ui/card.tsx#L13`!)                                                                             | Components manually override with `rounded-xl` and `rounded-2xl`                                                                                                               |
+| **Shadows**              | Chunky offset shadows (`4px 4px 0`, `6px 6px 0`, `0px 0px 0`)                                                | Hardcoded `.chunky-shadow` class outside `@theme` (`L34-L51`)                                                                                                    | Mixes `shadow-xs`, `shadow-sm`, and `.chunky-shadow`                                                                                                                           |
 
 ### 2.2 Complete Inventory of Hardcoded Hex Leaks in `forklore-fe/src`
 
@@ -261,21 +261,21 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
   --radius: 0.75rem; /* 12px base (rounded-lg = 12px, rounded-xl = 16px, rounded-2xl = 20px, rounded-3xl = 24px) */
 
   /* --- Surface & Canvas Hierarchy (DESIGN.md Kitchen Playbook) --- */
-  --background: oklch(0.985 0.011 56.2);           /* #fef8f4 Warm Off-White / Parchment */
-  --foreground: oklch(0.222 0.006 56.0);           /* #1d1b19 Charcoal */
+  --background: oklch(0.985 0.011 56.2); /* #fef8f4 Warm Off-White / Parchment */
+  --foreground: oklch(0.222 0.006 56); /* #1d1b19 Charcoal */
 
-  --surface: oklch(0.985 0.011 56.2);              /* #fef8f4 */
-  --surface-dim: oklch(0.892 0.009 56.0);          /* #ded9d5 */
-  --surface-bright: oklch(0.985 0.011 56.2);       /* #fef8f4 */
-  --surface-container-lowest: oklch(1 0 0);        /* #ffffff Lifted Pure White */
-  --surface-container-low: oklch(0.964 0.009 53.4);/* #f8f2ef Warm Low */
-  --surface-container: oklch(0.947 0.011 56.3);    /* #f3ede9 */
-  --surface-container-high: oklch(0.929 0.011 56.3);/* #ede7e3 */
-  --surface-container-highest: oklch(0.910 0.010 53.4); /* #e7e1de */
-  --on-surface: oklch(0.222 0.006 56.0);           /* #1d1b19 */
-  --on-surface-variant: oklch(0.404 0.043 32.5);   /* #59413a Muted Text */
-  --inverse-surface: oklch(0.309 0.006 56.0);      /* #32302e Media/Dark Surface */
-  --inverse-on-surface: oklch(0.957 0.009 56.3);   /* #f5f0ec */
+  --surface: oklch(0.985 0.011 56.2); /* #fef8f4 */
+  --surface-dim: oklch(0.892 0.009 56); /* #ded9d5 */
+  --surface-bright: oklch(0.985 0.011 56.2); /* #fef8f4 */
+  --surface-container-lowest: oklch(1 0 0); /* #ffffff Lifted Pure White */
+  --surface-container-low: oklch(0.964 0.009 53.4); /* #f8f2ef Warm Low */
+  --surface-container: oklch(0.947 0.011 56.3); /* #f3ede9 */
+  --surface-container-high: oklch(0.929 0.011 56.3); /* #ede7e3 */
+  --surface-container-highest: oklch(0.91 0.01 53.4); /* #e7e1de */
+  --on-surface: oklch(0.222 0.006 56); /* #1d1b19 */
+  --on-surface-variant: oklch(0.404 0.043 32.5); /* #59413a Muted Text */
+  --inverse-surface: oklch(0.309 0.006 56); /* #32302e Media/Dark Surface */
+  --inverse-on-surface: oklch(0.957 0.009 56.3); /* #f5f0ec */
 
   /* --- shadcn/ui Card & Popover Aliases --- */
   --card: var(--surface-container-lowest);
@@ -284,66 +284,66 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
   --popover-foreground: var(--on-surface);
 
   /* --- Primary (Terracotta) --- */
-  --primary: oklch(0.491 0.170 34.3);              /* #a93201 Terracotta */
-  --primary-foreground: oklch(1 0 0);              /* #ffffff */
-  --primary-container: oklch(0.578 0.175 35.1);    /* #cb4a1b */
-  --on-primary-container: oklch(0.99 0.005 34.3);  /* #fffbff */
-  --primary-fixed: oklch(0.908 0.048 34.3);        /* #ffdbd0 */
-  --primary-fixed-dim: oklch(0.816 0.098 34.3);    /* #ffb59e */
+  --primary: oklch(0.491 0.17 34.3); /* #a93201 Terracotta */
+  --primary-foreground: oklch(1 0 0); /* #ffffff */
+  --primary-container: oklch(0.578 0.175 35.1); /* #cb4a1b */
+  --on-primary-container: oklch(0.99 0.005 34.3); /* #fffbff */
+  --primary-fixed: oklch(0.908 0.048 34.3); /* #ffdbd0 */
+  --primary-fixed-dim: oklch(0.816 0.098 34.3); /* #ffb59e */
 
   /* --- Secondary (Sage Green) --- */
-  --secondary: oklch(0.478 0.073 150.8);           /* #3d6846 Sage Green */
-  --secondary-foreground: oklch(1 0 0);            /* #ffffff */
+  --secondary: oklch(0.478 0.073 150.8); /* #3d6846 Sage Green */
+  --secondary-foreground: oklch(1 0 0); /* #ffffff */
   --secondary-container: oklch(0.898 0.076 146.4); /* #bcebc0 */
   --on-secondary-container: oklch(0.493 0.075 150.4); /* #416c4a */
 
   /* --- Tertiary (Maize / Golden Yellow) --- */
-  --tertiary: oklch(0.476 0.098 92.2);             /* #715c00 */
-  --tertiary-foreground: oklch(1 0 0);             /* #ffffff */
-  --tertiary-container: oklch(0.751 0.125 91.5);   /* #c7a938 */
-  --on-tertiary-container: oklch(0.362 0.075 92.2);/* #4d3e00 */
-  --tertiary-fixed: oklch(0.912 0.138 94.5);       /* #ffe17a */
+  --tertiary: oklch(0.476 0.098 92.2); /* #715c00 */
+  --tertiary-foreground: oklch(1 0 0); /* #ffffff */
+  --tertiary-container: oklch(0.751 0.125 91.5); /* #c7a938 */
+  --on-tertiary-container: oklch(0.362 0.075 92.2); /* #4d3e00 */
+  --tertiary-fixed: oklch(0.912 0.138 94.5); /* #ffe17a */
 
   /* --- Muted & Accent (shadcn/ui primitives) --- */
-  --muted: var(--surface-container);               /* #f3ede9 */
-  --muted-foreground: var(--on-surface-variant);   /* #59413a */
-  --accent: var(--secondary-container);            /* #bcebc0 */
+  --muted: var(--surface-container); /* #f3ede9 */
+  --muted-foreground: var(--on-surface-variant); /* #59413a */
+  --accent: var(--secondary-container); /* #bcebc0 */
   --accent-foreground: var(--on-secondary-container); /* #416c4a */
 
   /* --- Semantic Status Tokens --- */
-  --destructive: oklch(0.505 0.193 27.5);          /* #ba1a1a Error */
-  --destructive-foreground: oklch(1 0 0);          /* #ffffff */
-  --destructive-container: oklch(0.906 0.046 24.5);/* #ffdad6 */
+  --destructive: oklch(0.505 0.193 27.5); /* #ba1a1a Error */
+  --destructive-foreground: oklch(1 0 0); /* #ffffff */
+  --destructive-container: oklch(0.906 0.046 24.5); /* #ffdad6 */
   --on-destructive-container: oklch(0.418 0.169 27.2); /* #93000a */
 
-  --success: var(--secondary);                     /* #3d6846 */
+  --success: var(--secondary); /* #3d6846 */
   --success-foreground: oklch(1 0 0);
   --success-container: var(--secondary-container);
   --on-success-container: var(--on-secondary-container);
 
-  --warning: var(--tertiary);                      /* #715c00 */
+  --warning: var(--tertiary); /* #715c00 */
   --warning-foreground: oklch(1 0 0);
-  --warning-container: var(--tertiary-fixed);      /* #ffe17a */
+  --warning-container: var(--tertiary-fixed); /* #ffe17a */
   --on-warning-container: var(--on-tertiary-container);
 
-  --info: oklch(0.500 0.110 245.0);
+  --info: oklch(0.5 0.11 245);
   --info-foreground: oklch(1 0 0);
-  --info-container: oklch(0.920 0.040 245.0);
-  --on-info-container: oklch(0.320 0.090 245.0);
+  --info-container: oklch(0.92 0.04 245);
+  --on-info-container: oklch(0.32 0.09 245);
 
   /* --- Borders, Outlines, Inputs & Focus Ring --- */
-  --outline: oklch(0.576 0.044 35.8);              /* #8d7168 */
-  --outline-variant: oklch(0.832 0.043 32.8);      /* #e1bfb5 */
+  --outline: oklch(0.576 0.044 35.8); /* #8d7168 */
+  --outline-variant: oklch(0.832 0.043 32.8); /* #e1bfb5 */
   --border: var(--outline-variant);
   --input: var(--outline-variant);
   --ring: var(--primary);
 
   /* --- Chart Palette (Culinary Warm-to-Fresh Scale) --- */
-  --chart-1: var(--primary);                       /* Terracotta */
-  --chart-2: var(--secondary);                     /* Sage Green */
-  --chart-3: var(--tertiary-container);            /* Maize Gold */
-  --chart-4: var(--primary-container);             /* Spiced Paprika */
-  --chart-5: var(--outline);                       /* Warm Umber */
+  --chart-1: var(--primary); /* Terracotta */
+  --chart-2: var(--secondary); /* Sage Green */
+  --chart-3: var(--tertiary-container); /* Maize Gold */
+  --chart-4: var(--primary-container); /* Spiced Paprika */
+  --chart-5: var(--outline); /* Warm Umber */
 
   /* --- Sidebar Tokens --- */
   --sidebar: var(--surface-container-low);
@@ -361,14 +361,14 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
   --shadow-2xs: 0 1px 0 0 rgb(var(--shadow-color) / 0.04);
   --shadow-xs: 0 1px 2px 0 rgb(var(--shadow-color) / 0.06);
   --shadow-sm: 0 2px 4px -1px rgb(var(--shadow-color) / 0.08);
-  --shadow-md: 0 6px 12px -2px rgb(var(--shadow-color) / 0.10);
+  --shadow-md: 0 6px 12px -2px rgb(var(--shadow-color) / 0.1);
   --shadow-lg: 0 12px 24px -4px rgb(var(--shadow-color) / 0.12);
   --inset-shadow-input: inset 0 2px 4px 0 rgb(var(--shadow-color) / 0.05);
 
   /* Tactile / Chunky interaction tokens (set offsets to 0px and use diffuse shadow for flat SaaS themes) */
-  --shadow-tactile: 4px 4px 0px 0px rgb(var(--shadow-color) / 0.10);
+  --shadow-tactile: 4px 4px 0px 0px rgb(var(--shadow-color) / 0.1);
   --shadow-tactile-hover: 6px 6px 0px 0px rgb(var(--shadow-color) / 0.15);
-  --shadow-tactile-active: 0px 0px 0px 0px rgb(var(--shadow-color) / 0.10);
+  --shadow-tactile-active: 0px 0px 0px 0px rgb(var(--shadow-color) / 0.1);
   --tactile-hover-translate-x: 0px;
   --tactile-hover-translate-y: -2px;
   --tactile-active-translate-x: 2px;
@@ -376,40 +376,40 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
 }
 
 .dark {
-  --background: oklch(0.175 0.008 48.0);
+  --background: oklch(0.175 0.008 48);
   --foreground: oklch(0.957 0.009 56.3);
 
-  --surface: oklch(0.175 0.008 48.0);
-  --surface-dim: oklch(0.145 0.008 48.0);
-  --surface-bright: oklch(0.265 0.012 48.0);
-  --surface-container-lowest: oklch(0.135 0.006 48.0);
-  --surface-container-low: oklch(0.205 0.010 48.0);
-  --surface-container: oklch(0.230 0.012 48.0);
-  --surface-container-high: oklch(0.265 0.014 48.0);
-  --surface-container-highest: oklch(0.305 0.016 48.0);
+  --surface: oklch(0.175 0.008 48);
+  --surface-dim: oklch(0.145 0.008 48);
+  --surface-bright: oklch(0.265 0.012 48);
+  --surface-container-lowest: oklch(0.135 0.006 48);
+  --surface-container-low: oklch(0.205 0.01 48);
+  --surface-container: oklch(0.23 0.012 48);
+  --surface-container-high: oklch(0.265 0.014 48);
+  --surface-container-highest: oklch(0.305 0.016 48);
   --on-surface: oklch(0.957 0.009 56.3);
-  --on-surface-variant: oklch(0.795 0.032 38.0);
+  --on-surface-variant: oklch(0.795 0.032 38);
   --inverse-surface: oklch(0.929 0.011 56.3);
-  --inverse-on-surface: oklch(0.222 0.006 56.0);
+  --inverse-on-surface: oklch(0.222 0.006 56);
 
   --card: var(--surface-container-low);
   --card-foreground: var(--on-surface);
   --popover: var(--surface-container);
   --popover-foreground: var(--on-surface);
 
-  --primary: oklch(0.720 0.155 36.0);
-  --primary-foreground: oklch(0.210 0.050 34.0);
-  --primary-container: oklch(0.491 0.170 34.3);
-  --on-primary-container: oklch(0.950 0.030 34.3);
+  --primary: oklch(0.72 0.155 36);
+  --primary-foreground: oklch(0.21 0.05 34);
+  --primary-container: oklch(0.491 0.17 34.3);
+  --on-primary-container: oklch(0.95 0.03 34.3);
 
-  --secondary: oklch(0.760 0.085 148.0);
-  --secondary-foreground: oklch(0.200 0.040 150.0);
-  --secondary-container: oklch(0.350 0.065 150.0);
+  --secondary: oklch(0.76 0.085 148);
+  --secondary-foreground: oklch(0.2 0.04 150);
+  --secondary-container: oklch(0.35 0.065 150);
   --on-secondary-container: oklch(0.898 0.076 146.4);
 
-  --tertiary: oklch(0.830 0.130 92.0);
-  --tertiary-foreground: oklch(0.240 0.050 92.0);
-  --tertiary-container: oklch(0.420 0.085 92.0);
+  --tertiary: oklch(0.83 0.13 92);
+  --tertiary-foreground: oklch(0.24 0.05 92);
+  --tertiary-container: oklch(0.42 0.085 92);
   --on-tertiary-container: oklch(0.912 0.138 94.5);
 
   --muted: var(--surface-container);
@@ -418,11 +418,11 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
   --accent-foreground: var(--on-surface);
 
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.180 0.050 22.0);
-  --destructive-container: oklch(0.360 0.130 25.0);
+  --destructive-foreground: oklch(0.18 0.05 22);
+  --destructive-container: oklch(0.36 0.13 25);
   --on-destructive-container: oklch(0.906 0.046 24.5);
 
-  --outline: oklch(0.620 0.038 35.8);
+  --outline: oklch(0.62 0.038 35.8);
   --outline-variant: oklch(0.345 0.025 35.8);
   --border: var(--outline-variant);
   --input: var(--outline-variant);
@@ -447,55 +447,55 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
   --font-mono: var(--font-mono-family);
 
   /* --- Semantic Typography Scale (DESIGN.md -> text-display-lg, text-headline-xl, etc.) --- */
-  --text-display-lg: 3rem;                        /* 48px */
-  --text-display-lg--line-height: 3.5rem;         /* 56px */
+  --text-display-lg: 3rem; /* 48px */
+  --text-display-lg--line-height: 3.5rem; /* 56px */
   --text-display-lg--letter-spacing: -0.02em;
   --text-display-lg--font-weight: 700;
 
-  --text-headline-xl: 2.5rem;                     /* 40px */
-  --text-headline-xl--line-height: 3rem;          /* 48px */
+  --text-headline-xl: 2.5rem; /* 40px */
+  --text-headline-xl--line-height: 3rem; /* 48px */
   --text-headline-xl--letter-spacing: -0.02em;
   --text-headline-xl--font-weight: 700;
 
-  --text-headline-lg: 2rem;                       /* 32px */
-  --text-headline-lg--line-height: 2.5rem;        /* 40px */
+  --text-headline-lg: 2rem; /* 32px */
+  --text-headline-lg--line-height: 2.5rem; /* 40px */
   --text-headline-lg--font-weight: 700;
 
-  --text-headline-md: 1.5rem;                     /* 24px */
-  --text-headline-md--line-height: 2rem;          /* 32px */
+  --text-headline-md: 1.5rem; /* 24px */
+  --text-headline-md--line-height: 2rem; /* 32px */
   --text-headline-md--font-weight: 600;
 
-  --text-headline-sm: 1.25rem;                    /* 20px */
-  --text-headline-sm--line-height: 1.75rem;       /* 28px */
+  --text-headline-sm: 1.25rem; /* 20px */
+  --text-headline-sm--line-height: 1.75rem; /* 28px */
   --text-headline-sm--font-weight: 600;
 
-  --text-title-md: 1.25rem;                       /* 20px */
-  --text-title-md--line-height: 1.75rem;          /* 28px */
+  --text-title-md: 1.25rem; /* 20px */
+  --text-title-md--line-height: 1.75rem; /* 28px */
   --text-title-md--font-weight: 600;
 
-  --text-body-lg: 1.125rem;                       /* 18px */
-  --text-body-lg--line-height: 1.75rem;           /* 28px */
+  --text-body-lg: 1.125rem; /* 18px */
+  --text-body-lg--line-height: 1.75rem; /* 28px */
   --text-body-lg--font-weight: 500;
 
-  --text-body-md: 1rem;                           /* 16px */
-  --text-body-md--line-height: 1.5rem;            /* 24px */
+  --text-body-md: 1rem; /* 16px */
+  --text-body-md--line-height: 1.5rem; /* 24px */
   --text-body-md--font-weight: 400;
 
-  --text-body-sm: 0.875rem;                       /* 14px */
-  --text-body-sm--line-height: 1.25rem;           /* 20px */
+  --text-body-sm: 0.875rem; /* 14px */
+  --text-body-sm--line-height: 1.25rem; /* 20px */
   --text-body-sm--font-weight: 400;
 
-  --text-label-lg: 0.875rem;                      /* 14px */
-  --text-label-lg--line-height: 1rem;             /* 16px */
+  --text-label-lg: 0.875rem; /* 14px */
+  --text-label-lg--line-height: 1rem; /* 16px */
   --text-label-lg--letter-spacing: 0.05em;
   --text-label-lg--font-weight: 700;
 
-  --text-label-md: 0.75rem;                       /* 12px */
-  --text-label-md--line-height: 1rem;             /* 16px */
+  --text-label-md: 0.75rem; /* 12px */
+  --text-label-md--line-height: 1rem; /* 16px */
   --text-label-md--font-weight: 600;
 
-  --text-label-sm: 0.75rem;                       /* 12px */
-  --text-label-sm--line-height: 1rem;             /* 16px */
+  --text-label-sm: 0.75rem; /* 12px */
+  --text-label-sm--line-height: 1rem; /* 16px */
   --text-label-sm--letter-spacing: 0.05em;
   --text-label-sm--font-weight: 700;
 
@@ -579,12 +579,12 @@ Below is the complete, production-ready `src/styles/theme.css` reconciling `DESI
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* --- Radius Scale (driven by --radius) --- */
-  --radius-xs: calc(var(--radius) - 8px);   /* 4px */
-  --radius-sm: calc(var(--radius) - 6px);   /* 6px */
-  --radius-md: calc(var(--radius) - 4px);   /* 8px */
-  --radius-lg: var(--radius);               /* 12px */
-  --radius-xl: calc(var(--radius) + 4px);   /* 16px */
-  --radius-2xl: calc(var(--radius) + 8px);  /* 20px */
+  --radius-xs: calc(var(--radius) - 8px); /* 4px */
+  --radius-sm: calc(var(--radius) - 6px); /* 6px */
+  --radius-md: calc(var(--radius) - 4px); /* 8px */
+  --radius-lg: var(--radius); /* 12px */
+  --radius-xl: calc(var(--radius) + 4px); /* 16px */
+  --radius-2xl: calc(var(--radius) + 8px); /* 20px */
   --radius-3xl: calc(var(--radius) + 12px); /* 24px */
   --radius-4xl: calc(var(--radius) + 20px); /* 32px */
 
@@ -661,23 +661,23 @@ Once `src/styles/theme.css` is in place, `src/shared/ui/button.tsx` and `src/sha
    - Replace hardcoded `rounded-none` (`src/shared/ui/card.tsx#L13`) with `rounded-2xl border border-outline-variant/40 bg-card text-card-foreground shadow-tactile`.
 3. **Eliminating All Hardcoded Hex Leaks Across `forklore-fe`:**
 
-| Hardcoded Class Found in `forklore-fe` | Semantic Tailwind v4 Replacement |
-| :--- | :--- |
-| `bg-[#fff8f3]`, `bg-[#fef8f4]` | `bg-background` or `bg-surface` |
-| `bg-white` (on cards/inputs) | `bg-card` or `bg-surface-container-lowest` |
-| `bg-[#f9f2ed]`, `bg-[#f8f2ef]` | `bg-surface-container-low` |
-| `bg-[#f3ede7]`, `bg-[#f3ede9]` | `bg-surface-container` or `bg-muted` |
-| `hover:bg-[#ede7e2]`, `bg-[#ede7e3]` | `hover:bg-surface-container-high`, `bg-surface-container-high` |
-| `bg-[#32302d]` (reel player dark frame) | `bg-inverse-surface` |
-| `text-[#1d1b18]`, `text-[#1d1b19]` | `text-foreground` or `text-on-surface` |
-| `text-[#57423b]`, `text-[#59413a]` | `text-muted-foreground` or `text-on-surface-variant` |
-| `bg-[#9f3c16]`, `text-[#9f3c16]` | `bg-primary`, `text-primary` |
-| `hover:bg-[#bf542c]`, `bg-[#cb4a1b]` | `hover:bg-primary-container`, `bg-primary-container` |
-| `bg-[#436558]`, `text-[#436558]` | `bg-secondary`, `text-secondary` |
-| `bg-[#c2e8d7] text-[#476a5c]` | `bg-secondary-container text-on-secondary-container` |
-| `border-[#dec0b7]/40`, `border-[#dec0b7]/60` | `border-outline-variant/40`, `border-outline-variant/60` (or `border-border/40`) |
-| `chunky-shadow chunky-shadow-hover active:translate-y-[2px]` | `interactive-tactile` (or `shadow-tactile` for non-interactive surfaces) |
-| `text-xs font-bold uppercase tracking-wider text-[#57423b]` | `text-label-sm uppercase text-on-surface-variant` |
+| Hardcoded Class Found in `forklore-fe`                       | Semantic Tailwind v4 Replacement                                                 |
+| :----------------------------------------------------------- | :------------------------------------------------------------------------------- |
+| `bg-[#fff8f3]`, `bg-[#fef8f4]`                               | `bg-background` or `bg-surface`                                                  |
+| `bg-white` (on cards/inputs)                                 | `bg-card` or `bg-surface-container-lowest`                                       |
+| `bg-[#f9f2ed]`, `bg-[#f8f2ef]`                               | `bg-surface-container-low`                                                       |
+| `bg-[#f3ede7]`, `bg-[#f3ede9]`                               | `bg-surface-container` or `bg-muted`                                             |
+| `hover:bg-[#ede7e2]`, `bg-[#ede7e3]`                         | `hover:bg-surface-container-high`, `bg-surface-container-high`                   |
+| `bg-[#32302d]` (reel player dark frame)                      | `bg-inverse-surface`                                                             |
+| `text-[#1d1b18]`, `text-[#1d1b19]`                           | `text-foreground` or `text-on-surface`                                           |
+| `text-[#57423b]`, `text-[#59413a]`                           | `text-muted-foreground` or `text-on-surface-variant`                             |
+| `bg-[#9f3c16]`, `text-[#9f3c16]`                             | `bg-primary`, `text-primary`                                                     |
+| `hover:bg-[#bf542c]`, `bg-[#cb4a1b]`                         | `hover:bg-primary-container`, `bg-primary-container`                             |
+| `bg-[#436558]`, `text-[#436558]`                             | `bg-secondary`, `text-secondary`                                                 |
+| `bg-[#c2e8d7] text-[#476a5c]`                                | `bg-secondary-container text-on-secondary-container`                             |
+| `border-[#dec0b7]/40`, `border-[#dec0b7]/60`                 | `border-outline-variant/40`, `border-outline-variant/60` (or `border-border/40`) |
+| `chunky-shadow chunky-shadow-hover active:translate-y-[2px]` | `interactive-tactile` (or `shadow-tactile` for non-interactive surfaces)         |
+| `text-xs font-bold uppercase tracking-wider text-[#57423b]`  | `text-label-sm uppercase text-on-surface-variant`                                |
 
 ### 3.4 Automated Guardrail Against Future Theme Leaks
 
@@ -689,12 +689,17 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const HEX_UTILITY_RE = /\b(?:bg|text|border|ring|outline|fill|stroke|from|via|to)-\[#[0-9a-fA-F]{3,8}\]/g;
+const HEX_UTILITY_RE =
+  /\b(?:bg|text|border|ring|outline|fill|stroke|from|via|to)-\[#[0-9a-fA-F]{3,8}\]/g;
 
 function getTsxFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const fullPath = join(dir, entry.name);
-    return entry.isDirectory() ? getTsxFiles(fullPath) : fullPath.endsWith(".tsx") ? [fullPath] : [];
+    return entry.isDirectory()
+      ? getTsxFiles(fullPath)
+      : fullPath.endsWith(".tsx")
+        ? [fullPath]
+        : [];
   });
 }
 

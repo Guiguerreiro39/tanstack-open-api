@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Biome 2 guardrails, GitHub Actions CI pipeline, and Node 24 container runtime
 

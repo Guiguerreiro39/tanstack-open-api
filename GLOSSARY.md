@@ -63,7 +63,3 @@ _Avoid_: Two-step upload, chunked upload, direct S3 upload
 **Test Harness**:
 The boundary-interception test assembly in `src/test/` (`renderAppRoutes`, `renderWithProviders`, MSW `msw-server`, `MockEventSource`, `MockXMLHttpRequest`, and `SpyObservabilityAdapter`) that mounts the real `Composition Root` and replaces external I/O without internal `vi.mock()` calls.
 _Avoid_: Mock wrapper, shallow renderer, module mock suite
-
-
-
-

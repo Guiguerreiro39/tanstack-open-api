@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Pragmatic Feature-Sliced Design (`app`, `routes`, `features`, `shared`) and router-scoped Effect composition
 

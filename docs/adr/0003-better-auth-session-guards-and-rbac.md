@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Better Auth client integration, Query-backed SSR/client route guards, and shared RBAC helpers
 

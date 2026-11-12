@@ -30,6 +30,7 @@
 ### 1.1 Audit of `forklore-fe`'s Current Orval + Effect Architecture
 
 In `forklore-fe`, the API layer is split across four locations:
+
 - [`orval.config.ts`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/orval.config.ts#L1-L20): Configures a single Orval target (`client: "react-query"`, `httpClient: "fetch"`, `mode: "split"`) with `customFetch` mutator.
 - [`src/shared/api/generated/endpoints.ts`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/src/shared/api/generated/endpoints.ts#L563-L632) & `models/`: Generated TypeScript interfaces and TanStack Query hooks.
 - [`src/shared/api/dto/*.dto.ts`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/src/shared/api/dto/recipes.dto.ts#L1-L134): Hand-written Effect `Schema.Struct` definitions and `FunctionDescriptor` objects.
@@ -52,6 +53,7 @@ Orval v8.27.0 bundles [`@orval/effect`](file:///Users/guilhermeguerreiro/Documen
 
 - **Per-Status Response Emission (`override.effect.generateEachHttpStatus`):**
   - At [`@orval/effect/dist/index.mjs#L606-L609`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/node_modules/.pnpm/@orval+effect@8.27.0_supports-color@7.2.0_typescript@5.9.3/node_modules/@orval/effect/dist/index.mjs#L606-L609):
+
     ```js
     const getSingleResponse = (responses) => {
       if (!responses) return;
@@ -69,12 +71,12 @@ Orval v8.27.0 bundles [`@orval/effect`](file:///Users/guilhermeguerreiro/Documen
 
 ### 1.3 Comparison of Contract Generation Approaches
 
-| Approach | How It Works | Pros | Cons | Verdict |
-|---|---|---|---|---|
-| **A. Dual-Target Orval (`react-query` + `effect`) + `defineContract` helper** | `orval.config.ts` runs `client: "react-query"` (`includeHttpResponseReturnType: false`) and `client: "effect"` (`generateEachHttpStatus: true`). `defineContract` pairs an Orval operation with its generated Effect `Schema` and derives `E` from the generated `*<Status>Response` exports. | Zero manual `Schema.Struct` writing; native Effect `Schema` AST (`Schema.standardSchemaV1` works in TanStack Form & Router); compile-time `TQueryFnData extends I` enforcement; allows overriding `dataSchema` with custom transforms when needed. | Requires `generateEachHttpStatus: true` in `orval.config.ts` so `201` routes are emitted. | **Recommended** |
-| **B. Orval `zod` + Standard Schema bridge** | Generate Zod schemas (`client: "zod"`) and bridge into Effect via `@standard-schema/spec`. | Orval supports `includeZodSchemaInArguments`. | Loses native Effect `Schema` combinators, `Encoded`/`Type` duality, бренding, and `SchemaDecodeError` AST formatting; requires keeping both `zod` and `effect` validation libraries in the frontend bundle. | Rejected |
-| **C. Manual `src/shared/api/dto/*.dto.ts` (Current `forklore-fe`)** | Hand-write `Schema.Struct` and `FunctionDescriptor<A, E, I>` per endpoint. | Full manual control over every field. | High maintenance toil; drifts silently from OpenAPI spec; 130+ lines of boilerplate per module. | Rejected |
-| **D. Hono RPC (`hc<AppType>`) without Orval** | Import `AppType` from backend monorepo workspace. | Zero codegen step in monorepos. | Couples frontend build to backend TypeScript source (violating standalone repo separation between `hono-open-api` and `tanstack-open-api`); provides no runtime `Effect.Schema` validation or TanStack Query key/hook generation. | Rejected |
+| Approach                                                                      | How It Works                                                                                                                                                                                                                                                                                  | Pros                                                                                                                                                                                                                                               | Cons                                                                                                                                                                                                                              | Verdict         |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| **A. Dual-Target Orval (`react-query` + `effect`) + `defineContract` helper** | `orval.config.ts` runs `client: "react-query"` (`includeHttpResponseReturnType: false`) and `client: "effect"` (`generateEachHttpStatus: true`). `defineContract` pairs an Orval operation with its generated Effect `Schema` and derives `E` from the generated `*<Status>Response` exports. | Zero manual `Schema.Struct` writing; native Effect `Schema` AST (`Schema.standardSchemaV1` works in TanStack Form & Router); compile-time `TQueryFnData extends I` enforcement; allows overriding `dataSchema` with custom transforms when needed. | Requires `generateEachHttpStatus: true` in `orval.config.ts` so `201` routes are emitted.                                                                                                                                         | **Recommended** |
+| **B. Orval `zod` + Standard Schema bridge**                                   | Generate Zod schemas (`client: "zod"`) and bridge into Effect via `@standard-schema/spec`.                                                                                                                                                                                                    | Orval supports `includeZodSchemaInArguments`.                                                                                                                                                                                                      | Loses native Effect `Schema` combinators, `Encoded`/`Type` duality, бренding, and `SchemaDecodeError` AST formatting; requires keeping both `zod` and `effect` validation libraries in the frontend bundle.                       | Rejected        |
+| **C. Manual `src/shared/api/dto/*.dto.ts` (Current `forklore-fe`)**           | Hand-write `Schema.Struct` and `FunctionDescriptor<A, E, I>` per endpoint.                                                                                                                                                                                                                    | Full manual control over every field.                                                                                                                                                                                                              | High maintenance toil; drifts silently from OpenAPI spec; 130+ lines of boilerplate per module.                                                                                                                                   | Rejected        |
+| **D. Hono RPC (`hc<AppType>`) without Orval**                                 | Import `AppType` from backend monorepo workspace.                                                                                                                                                                                                                                             | Zero codegen step in monorepos.                                                                                                                                                                                                                    | Couples frontend build to backend TypeScript source (violating standalone repo separation between `hono-open-api` and `tanstack-open-api`); provides no runtime `Effect.Schema` validation or TanStack Query key/hook generation. | Rejected        |
 
 ### 1.4 Recommended Configuration & Contract Factory
 
@@ -259,12 +261,13 @@ export function useEffectQuery<
 >(
   queryOptions: UseQueryOptions<TQueryFnData, TError, TQueryFnData, TQueryKey>,
   descriptor: FunctionDescriptor<A, E, I>,
-): UseEffectQueryResult<A, E>
+): UseEffectQueryResult<A, E>;
 ```
 
 #### Bonus: Reusing `@orval/effect` Request Schemas with `@tanstack/react-form` and `@tanstack/react-router`
 
 Because Effect `Schema` (`effect >= 3.13.0`) implements Standard Schema v1 via `Schema.standardSchemaV1(schema)`, the generated `*Body` and `*QueryParams` schemas in `src/shared/api/generated/schemas.ts` can be passed directly to:
+
 - **TanStack Router `validateSearch`:** `validateSearch: Schema.standardSchemaV1(GetApiV1TasksQueryParams)`
 - **TanStack Form `validators`:** `validators: { onSubmit: Schema.standardSchemaV1(PostApiV1TasksBody) }`
 
@@ -275,11 +278,14 @@ Because Effect `Schema` (`effect >= 3.13.0`) implements Standard Schema v1 via `
 ### 2.1 Wire Format Comparison: `forklore-fe` vs `hono-open-api`
 
 In `forklore-fe`:
+
 - [`src/shared/api/client.ts#L1-L11`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/src/shared/api/client.ts#L1-L11) defined `HttpErrorPayload` as `{ message?: string; error?: { issues?: Array<{ code?: string; path?: Array<string | number>; message?: string }>; name?: string } }`.
 - [`src/shared/api/contracts.ts#L51-L79`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/src/shared/api/contracts.ts#L51-L79) read `err.data?.message` and `err.data?.error?.issues`, and only handled HTTP `401`, `404`, `409`, and `422`.
 
 In `hono-open-api` ([`src/core/errors.ts#L156-L303`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L156-L303), [ADR-0002](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/docs/adr/0002-http-api-and-error-conventions.md)):
+
 - Every error response (`defaultHook` on `422`, `notFoundHandler` on `404`, `createErrorHandler` on `AppError` / `HTTPException` / unhandled `500`, and mid-stream SSE `event: error`) uses a single canonical JSON envelope:
+
   ```ts
   export const ErrorResponseSchema = z.object({
     error: z.object({
@@ -294,19 +300,19 @@ In `hono-open-api` ([`src/core/errors.ts#L156-L303`](file:///Users/guilhermeguer
 
 ### 2.2 Complete Status & Error Code Matrix in `hono-open-api`
 
-| HTTP Status | `hono-open-api` Source | Default `error.code` | Domain-Specific `error.code` Overrides & Context | Effect `Data.TaggedError` Class |
-|---|---|---|---|---|
-| `400` | [`BadRequestError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L36-L46) | `"BAD_REQUEST"` | `"INVALID_CURSOR"` ([`src/core/pagination.ts#L37-L70`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/pagination.ts#L37-L70)) | `BadRequestError` |
-| `401` | [`UnauthorizedError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L48-L58) | `"UNAUTHORIZED"` | Missing/expired session or `?token=` query param on `requireAuth` | `UnauthorizedError` |
-| `403` | [`ForbiddenError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L60-L70) | `"FORBIDDEN"` | `user.banned === true`, RBAC permission check failure, non-admin `?scope=all` or `?userId=` ([`ADR-0004`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/docs/architecture.md#L80-L81)) | `ForbiddenError` |
-| `404` | [`NotFoundError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L72-L82), [`notFoundHandler`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L235-L243) | `"NOT_FOUND"` | Missing entity, foreign entity ID for non-privileged user, or `/_storage/*` when S3 driver is active | `NotFoundError` |
-| `408` | [`RequestTimeoutError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L84-L94), [`defaultTimeout`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/app.ts#L67-L70) | `"REQUEST_TIMEOUT"` | Global `30s` request timeout middleware | `RequestTimeoutError` |
-| `409` | [`ConflictError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L96-L106) | `"CONFLICT"` | `"FILE_PENDING"` on download/url/complete of unverified upload ([`files.service.ts`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/docs/architecture.md#L99)), DB unique constraint | `ConflictError` |
-| `413` | [`PayloadTooLargeError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L108-L118), [`bodyLimit`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/app.ts#L60-L65) | `"PAYLOAD_TOO_LARGE"` | `1 MB` global JSON limit or `STORAGE_MAX_FILE_SIZE_BYTES` upload limit | `PayloadTooLargeError` |
-| `422` | [`ValidationError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L120-L130), [`defaultHook`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L222-L233) | `"VALIDATION_ERROR"` | `details` holds `ZodIssue[]` on OpenAPI validation failures, or MIME / magic-byte failure details in `files` | `ValidationError` |
-| `429` | [`RateLimitError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L132-L142) | `"RATE_LIMIT_EXCEEDED"` | Route-group rate limiters (`10 req/min` auth/upload, `100 req/min` general) | `RateLimitError` |
-| `500` | [`createErrorHandler`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L258-L302) | `"INTERNAL_SERVER_ERROR"` | Wire message always sanitized to `"Internal server error"` | `InternalServerError` |
-| `503` | [`ServiceUnavailableError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L144-L154), [`GET /ready`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/modules/system/system.routes.ts#L55-L62) | `"SERVICE_UNAVAILABLE"` | `MAX_SSE_CONNECTIONS` reached, graceful shutdown active, or `/ready` unhealthy probe (`{ status: "unhealthy", timestamp, checks }`) | `ServiceUnavailableError` |
+| HTTP Status | `hono-open-api` Source                                                                                                                                                                                                                           | Default `error.code`      | Domain-Specific `error.code` Overrides & Context                                                                                                                                                      | Effect `Data.TaggedError` Class |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `400`       | [`BadRequestError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L36-L46)                                                                                                                                     | `"BAD_REQUEST"`           | `"INVALID_CURSOR"` ([`src/core/pagination.ts#L37-L70`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/pagination.ts#L37-L70))                                                  | `BadRequestError`               |
+| `401`       | [`UnauthorizedError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L48-L58)                                                                                                                                   | `"UNAUTHORIZED"`          | Missing/expired session or `?token=` query param on `requireAuth`                                                                                                                                     | `UnauthorizedError`             |
+| `403`       | [`ForbiddenError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L60-L70)                                                                                                                                      | `"FORBIDDEN"`             | `user.banned === true`, RBAC permission check failure, non-admin `?scope=all` or `?userId=` ([`ADR-0004`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/docs/architecture.md#L80-L81)) | `ForbiddenError`                |
+| `404`       | [`NotFoundError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L72-L82), [`notFoundHandler`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L235-L243)                       | `"NOT_FOUND"`             | Missing entity, foreign entity ID for non-privileged user, or `/_storage/*` when S3 driver is active                                                                                                  | `NotFoundError`                 |
+| `408`       | [`RequestTimeoutError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L84-L94), [`defaultTimeout`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/app.ts#L67-L70)                            | `"REQUEST_TIMEOUT"`       | Global `30s` request timeout middleware                                                                                                                                                               | `RequestTimeoutError`           |
+| `409`       | [`ConflictError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L96-L106)                                                                                                                                      | `"CONFLICT"`              | `"FILE_PENDING"` on download/url/complete of unverified upload ([`files.service.ts`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/docs/architecture.md#L99)), DB unique constraint    | `ConflictError`                 |
+| `413`       | [`PayloadTooLargeError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L108-L118), [`bodyLimit`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/app.ts#L60-L65)                              | `"PAYLOAD_TOO_LARGE"`     | `1 MB` global JSON limit or `STORAGE_MAX_FILE_SIZE_BYTES` upload limit                                                                                                                                | `PayloadTooLargeError`          |
+| `422`       | [`ValidationError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L120-L130), [`defaultHook`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L222-L233)                       | `"VALIDATION_ERROR"`      | `details` holds `ZodIssue[]` on OpenAPI validation failures, or MIME / magic-byte failure details in `files`                                                                                          | `ValidationError`               |
+| `429`       | [`RateLimitError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L132-L142)                                                                                                                                    | `"RATE_LIMIT_EXCEEDED"`   | Route-group rate limiters (`10 req/min` auth/upload, `100 req/min` general)                                                                                                                           | `RateLimitError`                |
+| `500`       | [`createErrorHandler`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L258-L302)                                                                                                                                | `"INTERNAL_SERVER_ERROR"` | Wire message always sanitized to `"Internal server error"`                                                                                                                                            | `InternalServerError`           |
+| `503`       | [`ServiceUnavailableError`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/errors.ts#L144-L154), [`GET /ready`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/modules/system/system.routes.ts#L55-L62) | `"SERVICE_UNAVAILABLE"`   | `MAX_SSE_CONNECTIONS` reached, graceful shutdown active, or `/ready` unhealthy probe (`{ status: "unhealthy", timestamp, checks }`)                                                                   | `ServiceUnavailableError`       |
 
 ### 2.3 Hardened `customFetch` & `FetchError` (`src/shared/api/client.ts`)
 
@@ -403,7 +409,10 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
     throw new FetchError({
       status: response.status,
       code: apiErr?.code ?? `HTTP_${response.status}`,
-      message: apiErr?.message ?? payload?.message ?? (response.statusText || `HTTP error ${response.status}`),
+      message:
+        apiErr?.message ??
+        payload?.message ??
+        (response.statusText || `HTTP error ${response.status}`),
       requestId: apiErr?.requestId ?? headerRequestId,
       details: apiErr?.details,
       data: rawData,
@@ -415,7 +424,10 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
   }
 
   const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
-  if (contentType.includes("application/octet-stream") || (!contentType.includes("json") && !contentType.startsWith("text/"))) {
+  if (
+    contentType.includes("application/octet-stream") ||
+    (!contentType.includes("json") && !contentType.startsWith("text/"))
+  ) {
     return (await response.blob()) as unknown as T;
   }
 
@@ -542,7 +554,10 @@ function extractValidationIssues(details: unknown): ReadonlyArray<ApiErrorDetail
 }
 
 export function decodeApiError(error: unknown): AnyApiError {
-  if (error instanceof FetchError || (typeof error === "object" && error !== null && "status" in error)) {
+  if (
+    error instanceof FetchError ||
+    (typeof error === "object" && error !== null && "status" in error)
+  ) {
     const err = error as FetchError;
     const status = err.status;
     const code = err.code ?? `HTTP_${status}`;
@@ -602,8 +617,10 @@ export function decodeApiError(error: unknown): AnyApiError {
 ### 2.5 Cursor Pagination Alignment (`{ data, meta: { nextCursor, hasMore } }`)
 
 In [`hono-open-api/src/core/pagination.ts#L13-L26`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/src/core/pagination.ts#L13-L26):
+
 - Paginated endpoints (`GET /api/v1/tasks`, `GET /api/v1/tasks/live`, `GET /api/v1/files`) accept `{ cursor?: string, limit?: number (1..100, default 50), scope?: "own" | "all", userId?: string }`.
 - Responses conform to `PaginatedResponse<T>`:
+
   ```ts
   export const PaginatedMetaSchema = Schema.Struct({
     nextCursor: Schema.NullOr(Schema.String),
@@ -674,6 +691,7 @@ sequenceDiagram
 ### 3.3 Dual-Transport `useLiveQuery` Design (`EventSource` + `fetch`/`eventsource-parser`)
 
 The starter should add `eventsource-parser` (`^3.0.1`) to `dependencies` and implement `useLiveQuery` with automatic transport selection:
+
 - **Cookie mode (default when `getBearerToken` / `bearerToken` is omitted):** Uses `new EventSource(fullUrl, { withCredentials: true })`. Browser handles `retry: 3000` reconnection natively.
 - **Bearer mode (when `bearerToken` or `getBearerToken` is provided):** Uses `fetch(fullUrl, { headers: { Authorization: "Bearer ...", Accept: "text/event-stream" }, signal })` + `createParser` from `eventsource-parser` ([`docs/development.md#L178-L290`](file:///Users/guilhermeguerreiro/Documents/Git/hono-open-api/docs/development.md#L178-L290)).
   - **Pre-stream HTTP status discrimination:** Non-retryable `4xx` responses (`400`, `401`, `403`, `404`, `422`) parse the ADR-0002 JSON error body, decode it via `decodeApiError`, set `liveStatus = "error"`, and **abort retry loops**. Transient statuses (`429`, `502`, `503`, `504`) and network drops retry with exponential backoff (`Math.min(maxDelayMs, baseDelayMs * 2 ** attempt)`), respecting any server `retry:` directive received via `onRetry`.
@@ -691,12 +709,7 @@ import { useEffect, useRef, useState } from "react";
 import type { UseEffectQueryResult } from "./use-effect-query";
 import { useEffectQuery } from "./use-effect-query";
 
-export type LiveConnectionStatus =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "error";
+export type LiveConnectionStatus = "idle" | "connecting" | "connected" | "reconnecting" | "error";
 
 export interface UseLiveQueryOptions<
   TQueryFnData extends I,
@@ -711,7 +724,9 @@ export interface UseLiveQueryOptions<
   /** Relative or absolute SSE path — pass Orval's `getGetApiV1TasksLiveUrl(params)` */
   readonly liveUrl: string;
   /** Optional Bearer token or async getter; when omitted, uses EventSource with HttpOnly cookies */
-  readonly bearerToken?: string | (() => string | null | undefined | Promise<string | null | undefined>);
+  readonly bearerToken?:
+    | string
+    | (() => string | null | undefined | Promise<string | null | undefined>);
   readonly enabled?: boolean;
   readonly baseDelayMs?: number;
   readonly maxDelayMs?: number;
@@ -874,7 +889,11 @@ export function useLiveQuery<
       const onSnapshot = (event: MessageEvent<string>) => handleSnapshotData(event.data);
       const onPing = (event: MessageEvent<string>) => handlePingData(event.data);
       const onError = (event: Event) => {
-        if (event instanceof MessageEvent && typeof event.data === "string" && event.data.length > 0) {
+        if (
+          event instanceof MessageEvent &&
+          typeof event.data === "string" &&
+          event.data.length > 0
+        ) {
           const decoded = decodeSseErrorFrame(event.data);
           setStreamError(decoded);
           onStreamErrorRef.current?.(decoded);

@@ -25,41 +25,43 @@
 
 ### 1.1 Baseline Audit (`forklore-fe` vs `hono-open-api`)
 
-| Dimension | `forklore-fe` (Current Baseline) | `hono-open-api` (Backend Reference) | Gap to Close in `tanstack-open-api` |
-| :--- | :--- | :--- | :--- |
-| **Toolchain** | `@biomejs/biome` `1.9.4` (`package.json#L46`) | `eslint` `^10.8.0` + `@antfu/eslint-config` `^9.2.0` + `eslint-plugin-format` `^2.0.1` (`package.json#L50-L56`) | `forklore-fe` is on Biome 1.9.x schema (`organizeImports`, `files.ignore`) and lacks Biome 2's Tailwind v4 parser, type-aware rules, and boundary rules. |
-| **Layer Boundaries** | None enforced by linter | Architectural boundary guardrail (`src/modules/ -> src/core/ <- src/infra/`) documented in `AGENTS.md#L19` | Enforce unidirectional layer imports via `style/noRestrictedImports` + directory `overrides`. |
-| **Environment Isolation** | Scattered `import.meta.env` & `process.env` reads in `client.ts#L27-L28`, `auth-client.ts#L5`, `use-live-query.ts#L56-L57` | `node/no-process-env: ["error"]` in `eslint.config.mjs#L18`; isolated to `src/env.ts` | Enforce `style/noProcessEnv: "error"` globally with an override for `src/env.ts` and config files. |
-| **File Naming** | Unenforced | `unicorn/filename-case` (`kebabCase`) in `eslint.config.mjs#L20-L23` | Enforce `style/useFilenamingConvention` (`kebab-case`) with an override for TanStack Router's `src/routes/**` conventions (`__root.tsx`, `_app`, `$id`). |
-| **CSS & Tailwind v4** | `src/index.css` uses `@theme inline` (`#L87`) and `@custom-variant dark` (`#L129`) without `tailwindDirectives: true` | Backend-only (no CSS) | Enable `css.parser.tailwindDirectives: true` and `nursery/useSortedClasses` for `cn()` / `cva()` / `clsx()`. |
-| **Scripts** | `"check-types": "tsc --noEmit"`, `"lint": "biome check"` | `"typecheck": "tsc --noEmit"`, `"lint": "eslint ."`, `"lint:fix": "eslint . --fix"` | Standardize script names (`typecheck`, `lint`, `lint:fix`, `format`) across both repos. |
+| Dimension                 | `forklore-fe` (Current Baseline)                                                                                           | `hono-open-api` (Backend Reference)                                                                             | Gap to Close in `tanstack-open-api`                                                                                                                      |
+| :------------------------ | :------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Toolchain**             | `@biomejs/biome` `1.9.4` (`package.json#L46`)                                                                              | `eslint` `^10.8.0` + `@antfu/eslint-config` `^9.2.0` + `eslint-plugin-format` `^2.0.1` (`package.json#L50-L56`) | `forklore-fe` is on Biome 1.9.x schema (`organizeImports`, `files.ignore`) and lacks Biome 2's Tailwind v4 parser, type-aware rules, and boundary rules. |
+| **Layer Boundaries**      | None enforced by linter                                                                                                    | Architectural boundary guardrail (`src/modules/ -> src/core/ <- src/infra/`) documented in `AGENTS.md#L19`      | Enforce unidirectional layer imports via `style/noRestrictedImports` + directory `overrides`.                                                            |
+| **Environment Isolation** | Scattered `import.meta.env` & `process.env` reads in `client.ts#L27-L28`, `auth-client.ts#L5`, `use-live-query.ts#L56-L57` | `node/no-process-env: ["error"]` in `eslint.config.mjs#L18`; isolated to `src/env.ts`                           | Enforce `style/noProcessEnv: "error"` globally with an override for `src/env.ts` and config files.                                                       |
+| **File Naming**           | Unenforced                                                                                                                 | `unicorn/filename-case` (`kebabCase`) in `eslint.config.mjs#L20-L23`                                            | Enforce `style/useFilenamingConvention` (`kebab-case`) with an override for TanStack Router's `src/routes/**` conventions (`__root.tsx`, `_app`, `$id`). |
+| **CSS & Tailwind v4**     | `src/index.css` uses `@theme inline` (`#L87`) and `@custom-variant dark` (`#L129`) without `tailwindDirectives: true`      | Backend-only (no CSS)                                                                                           | Enable `css.parser.tailwindDirectives: true` and `nursery/useSortedClasses` for `cn()` / `cva()` / `clsx()`.                                             |
+| **Scripts**               | `"check-types": "tsc --noEmit"`, `"lint": "biome check"`                                                                   | `"typecheck": "tsc --noEmit"`, `"lint": "eslint ."`, `"lint:fix": "eslint . --fix"`                             | Standardize script names (`typecheck`, `lint`, `lint:fix`, `format`) across both repos.                                                                  |
 
 ### 1.2 Head-to-Head Comparison: Biome 2.x vs ESLint 10 (`@antfu/eslint-config`)
 
 Primary sources evaluated:
+
 - [Biome v2.0 Release Notes ("Biotype")](https://biomejs.dev/blog/biome-v2/)
 - [Biome v2 Upgrade Guide](https://biomejs.dev/guides/upgrade-to-biome-v2/)
 - [Biome Linter Rules Reference](https://biomejs.dev/linter/rules/)
 - [Biome CSS Parser & Tailwind Directives](https://biomejs.dev/reference/configuration/#cssparsertailwinddirectives)
 - [`@antfu/eslint-config` Repository & Docs](https://github.com/antfu/eslint-config)
 
-| Capability | Biome 2.x (`@biomejs/biome` `^2.6.7`) | ESLint 10 + `@antfu/eslint-config` `^9.2.0` | Verdict for `tanstack-open-api` |
-| :--- | :--- | :--- | :--- |
-| **Runtime Speed** | **~20–50ms** across ~60–200 files (single native Rust binary). | **~2.5–6.0s** cold run across ~60–200 files (Node.js + TypeScript ESTree + multiple plugins). | **Biome 2.x** (50–100x faster in local save hooks, pre-commit, and CI). |
-| **Dependency Footprint** | **1 devDependency** (`@biomejs/biome`), zero transitive JS plugin dependencies. | **45+ transitive packages** (`@eslint-react/*`, `eslint-plugin-format`, `eslint-plugin-perfectionist`, `eslint-plugin-unicorn`, etc.). | **Biome 2.x** (dramatically simpler lockfile and zero peer-dependency churn). |
-| **Tailwind CSS v4 Syntax (`@theme`, `@custom-variant`, `@utility`, `@apply`)** | **Native in Rust CSS parser** via `"css": { "parser": { "tailwindDirectives": true } }`. Formats and lints `src/index.css` directly ([Biome CSS Config](https://biomejs.dev/reference/configuration/#cssparsertailwinddirectives)). | `@antfu/eslint-config` delegates CSS formatting to Prettier (`eslint-plugin-format`) and requires adding `eslint-plugin-better-tailwindcss` configured with `entryPoint: "src/index.css"`. | **Biome 2.x** (zero extra plugins required for Tailwind v4 CSS-first syntax). |
-| **Tailwind Utility Class Sorting** | Built-in `nursery/useSortedClasses` supporting JSX `className` and helper functions (`cn`, `cva`, `clsx`) ([`useSortedClasses` Docs](https://biomejs.dev/linter/rules/use-sorted-classes/)). | Requires `eslint-plugin-better-tailwindcss` or `prettier-plugin-tailwindcss`. | **Tie / Slight Edge Biome** (built-in without external plugins; note that `useSortedClasses` is in `nursery` and applies via `--unsafe` or explicit fix configuration). |
-| **Import Sorting** | Built-in `assist.actions.source.organizeImports` with configurable import groups (`:NODE:`, `:PACKAGE:`, `:ALIAS:`, `:PATH:`) ([Biome Assist Docs](https://biomejs.dev/assist/actions/organize-imports/)). | Built-in via `eslint-plugin-perfectionist` (`perfectionist/sort-imports`). | **Tie** (both deterministic and autofixable). |
-| **Layer Boundary Enforcement** | Built-in `style/noRestrictedImports` (`paths` + glob `patterns` with negation `!` and custom `message`) scoped per directory via `overrides` ([`noRestrictedImports` Docs](https://biomejs.dev/linter/rules/no-restricted-imports/)). | Built-in `no-restricted-imports` or external `eslint-plugin-boundaries`. | **Tie** (Biome 2.x `patterns` + `overrides` cleanly expresses unidirectional `routes -> features -> shared` boundaries without extra plugins). |
-| **Filename Case Enforcement** | Built-in `style/useFilenamingConvention` (`kebab-case`) ([`useFilenamingConvention` Docs](https://biomejs.dev/linter/rules/use-filenaming-convention/)). | Built-in `unicorn/filename-case` (`kebabCase`). | **Tie** (both require an override/ignore for TanStack Router's `src/routes/**` file naming conventions like `__root.tsx` and `_app`). |
-| **Environment Variable Isolation** | Built-in `style/noProcessEnv` ([`noProcessEnv` Docs](https://biomejs.dev/linter/rules/no-process-env/)) + `noRestrictedSyntax` / architecture conventions for `import.meta.env`. | Built-in `node/no-process-env` (`eslint-plugin-n`). | **Tie** (both disallow raw `process.env` reads outside `src/env.ts`). |
-| **React 19 & Hooks Rules** | Built-in `correctness/useExhaustiveDependencies`, `correctness/useHookAtTopLevel`, `correctness/noChildrenProp`, `security/noDangerouslySetInnerHtml`. | Uses `@eslint-react/eslint-plugin` + `eslint-plugin-react-hooks` when `react: true` is enabled. | **Biome 2.x** covers all core React 19 + Hooks rules natively; `@antfu/eslint-config` has slightly more granular React compiler niche rules. |
-| **Accessibility (`a11y`)** | **30+ built-in `a11y` rules** enabled by default in `recommended` (`useAltText`, `useButtonType`, `useKeyWithClickEvents`, `useSemanticElements`, `useValidAriaProps`, `noSvgWithoutTitle`, etc.) ([Biome a11y Rules](https://biomejs.dev/linter/rules/#a11y)). | `@antfu/eslint-config` does **not** bundle `eslint-plugin-jsx-a11y` by default; must be installed and wired manually. | **Biome 2.x** (first-class `a11y` enforcement out of the box, essential for custom UI + `shadcn/ui` compositions). |
-| **Type-Aware Linting & Effect** | Biome 2.0 introduces a Rust type-inference engine (`nursery/noFloatingPromises`, multi-file analysis) without invoking `tsc` ([Biome v2 Blog](https://biomejs.dev/blog/biome-v2/)). Effect diagnostics are handled by `@effect/language-service` in `tsconfig.json`. | Supports `typescript-eslint` type-aware rules (`tsconfigPath`), which slows ESLint down to `tsc` speeds. | **Biome 2.x + `@effect/language-service`** (fast linting in Biome + full Effect type diagnostics in `pnpm typecheck`). |
+| Capability                                                                     | Biome 2.x (`@biomejs/biome` `^2.6.7`)                                                                                                                                                                                                                                | ESLint 10 + `@antfu/eslint-config` `^9.2.0`                                                                                                                                                | Verdict for `tanstack-open-api`                                                                                                                                         |
+| :----------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Runtime Speed**                                                              | **~20–50ms** across ~60–200 files (single native Rust binary).                                                                                                                                                                                                       | **~2.5–6.0s** cold run across ~60–200 files (Node.js + TypeScript ESTree + multiple plugins).                                                                                              | **Biome 2.x** (50–100x faster in local save hooks, pre-commit, and CI).                                                                                                 |
+| **Dependency Footprint**                                                       | **1 devDependency** (`@biomejs/biome`), zero transitive JS plugin dependencies.                                                                                                                                                                                      | **45+ transitive packages** (`@eslint-react/*`, `eslint-plugin-format`, `eslint-plugin-perfectionist`, `eslint-plugin-unicorn`, etc.).                                                     | **Biome 2.x** (dramatically simpler lockfile and zero peer-dependency churn).                                                                                           |
+| **Tailwind CSS v4 Syntax (`@theme`, `@custom-variant`, `@utility`, `@apply`)** | **Native in Rust CSS parser** via `"css": { "parser": { "tailwindDirectives": true } }`. Formats and lints `src/index.css` directly ([Biome CSS Config](https://biomejs.dev/reference/configuration/#cssparsertailwinddirectives)).                                  | `@antfu/eslint-config` delegates CSS formatting to Prettier (`eslint-plugin-format`) and requires adding `eslint-plugin-better-tailwindcss` configured with `entryPoint: "src/index.css"`. | **Biome 2.x** (zero extra plugins required for Tailwind v4 CSS-first syntax).                                                                                           |
+| **Tailwind Utility Class Sorting**                                             | Built-in `nursery/useSortedClasses` supporting JSX `className` and helper functions (`cn`, `cva`, `clsx`) ([`useSortedClasses` Docs](https://biomejs.dev/linter/rules/use-sorted-classes/)).                                                                         | Requires `eslint-plugin-better-tailwindcss` or `prettier-plugin-tailwindcss`.                                                                                                              | **Tie / Slight Edge Biome** (built-in without external plugins; note that `useSortedClasses` is in `nursery` and applies via `--unsafe` or explicit fix configuration). |
+| **Import Sorting**                                                             | Built-in `assist.actions.source.organizeImports` with configurable import groups (`:NODE:`, `:PACKAGE:`, `:ALIAS:`, `:PATH:`) ([Biome Assist Docs](https://biomejs.dev/assist/actions/organize-imports/)).                                                           | Built-in via `eslint-plugin-perfectionist` (`perfectionist/sort-imports`).                                                                                                                 | **Tie** (both deterministic and autofixable).                                                                                                                           |
+| **Layer Boundary Enforcement**                                                 | Built-in `style/noRestrictedImports` (`paths` + glob `patterns` with negation `!` and custom `message`) scoped per directory via `overrides` ([`noRestrictedImports` Docs](https://biomejs.dev/linter/rules/no-restricted-imports/)).                                | Built-in `no-restricted-imports` or external `eslint-plugin-boundaries`.                                                                                                                   | **Tie** (Biome 2.x `patterns` + `overrides` cleanly expresses unidirectional `routes -> features -> shared` boundaries without extra plugins).                          |
+| **Filename Case Enforcement**                                                  | Built-in `style/useFilenamingConvention` (`kebab-case`) ([`useFilenamingConvention` Docs](https://biomejs.dev/linter/rules/use-filenaming-convention/)).                                                                                                             | Built-in `unicorn/filename-case` (`kebabCase`).                                                                                                                                            | **Tie** (both require an override/ignore for TanStack Router's `src/routes/**` file naming conventions like `__root.tsx` and `_app`).                                   |
+| **Environment Variable Isolation**                                             | Built-in `style/noProcessEnv` ([`noProcessEnv` Docs](https://biomejs.dev/linter/rules/no-process-env/)) + `noRestrictedSyntax` / architecture conventions for `import.meta.env`.                                                                                     | Built-in `node/no-process-env` (`eslint-plugin-n`).                                                                                                                                        | **Tie** (both disallow raw `process.env` reads outside `src/env.ts`).                                                                                                   |
+| **React 19 & Hooks Rules**                                                     | Built-in `correctness/useExhaustiveDependencies`, `correctness/useHookAtTopLevel`, `correctness/noChildrenProp`, `security/noDangerouslySetInnerHtml`.                                                                                                               | Uses `@eslint-react/eslint-plugin` + `eslint-plugin-react-hooks` when `react: true` is enabled.                                                                                            | **Biome 2.x** covers all core React 19 + Hooks rules natively; `@antfu/eslint-config` has slightly more granular React compiler niche rules.                            |
+| **Accessibility (`a11y`)**                                                     | **30+ built-in `a11y` rules** enabled by default in `recommended` (`useAltText`, `useButtonType`, `useKeyWithClickEvents`, `useSemanticElements`, `useValidAriaProps`, `noSvgWithoutTitle`, etc.) ([Biome a11y Rules](https://biomejs.dev/linter/rules/#a11y)).      | `@antfu/eslint-config` does **not** bundle `eslint-plugin-jsx-a11y` by default; must be installed and wired manually.                                                                      | **Biome 2.x** (first-class `a11y` enforcement out of the box, essential for custom UI + `shadcn/ui` compositions).                                                      |
+| **Type-Aware Linting & Effect**                                                | Biome 2.0 introduces a Rust type-inference engine (`nursery/noFloatingPromises`, multi-file analysis) without invoking `tsc` ([Biome v2 Blog](https://biomejs.dev/blog/biome-v2/)). Effect diagnostics are handled by `@effect/language-service` in `tsconfig.json`. | Supports `typescript-eslint` type-aware rules (`tsconfigPath`), which slows ESLint down to `tsc` speeds.                                                                                   | **Biome 2.x + `@effect/language-service`** (fast linting in Biome + full Effect type diagnostics in `pnpm typecheck`).                                                  |
 
 ### 1.3 Recommended `biome.json` (Biome 2.x) for `tanstack-open-api`
 
 Upgrading from `forklore-fe/biome.json` (`1.9.4`) to Biome `2.6.x` involves:
+
 1. Migrating `files.ignore` to `files.includes` with force-ignore (`!!`) for build/generated outputs (`!!dist`, `!!src/routeTree.gen.ts`, `!!src/shared/api/generated`) so Biome's multi-file scanner skips indexing generated files ([Biome v2 `files.includes`](https://biomejs.dev/guides/upgrade-to-biome-v2/)).
 2. Migrating top-level `organizeImports` to `assist.actions.source.organizeImports`.
 3. Enabling `"css": { "parser": { "tailwindDirectives": true } }`.
@@ -246,29 +248,31 @@ Inspecting `forklore-fe`'s existing test suite reveals four structural issues th
 ### 2.2 Test Environment Trade-Offs: `happy-dom` vs `jsdom` vs Vitest 4 Browser Mode
 
 Primary sources evaluated:
+
 - [Vitest Browser Mode Guide](https://vitest.dev/guide/browser/)
 - [Vitest Coverage (`@vitest/coverage-v8`)](https://vitest.dev/guide/coverage.html)
 - [Testing Library User Interactions (`@testing-library/user-event`)](https://testing-library.com/docs/user-event/intro)
 
-| Environment | Execution Speed | DOM & Layout Fidelity | Best Fit in `tanstack-open-api` |
-| :--- | :--- | :--- | :--- |
-| **`happy-dom` (`^20.5.0`)** | **Fastest** (~150–400ms full suite startup, 2–4x faster than `jsdom`). | Emulated DOM in Node.js. Supports standard `fetch`, `AbortController`, `CustomEvent`, and React 19 rendering; requires tiny shims in `setup.ts` for Radix UI pointer capture (`hasPointerCapture`, `ResizeObserver`) and `EventSource`. | **Primary `unit` project** (`pnpm test`) for all Effect contract tests, hook tests, route guard tests, and `shadcn/ui` behavioral component tests. |
-| **`jsdom` (`^26.0.0`)** | **Slower** (heavier spec bookkeeping per test file). | Emulated DOM in Node.js; still lacks real layout (`getBoundingClientRect`), CSS cascade, and `ResizeObserver`. | **Unnecessary** when `happy-dom` is used for Node-based tests; remove duplicate `jsdom` devDependency from `forklore-fe/package.json#L57`. |
-| **Vitest 4 Browser Mode (`@vitest/browser` + Playwright)** | **Moderate** (~2–4s headless Chromium startup; requires Playwright browser binaries in CI). | **100% Real Browser** (real CSS `@theme` / `@custom-variant dark` computed styles, real focus traps, real pointer occlusion, native `EventSource`). | **Optional `browser` project** (or handled by the repo's `.agents/skills/verify-*/SKILL.md` Playwright/browser runtime verification skill). |
+| Environment                                                | Execution Speed                                                                             | DOM & Layout Fidelity                                                                                                                                                                                                                   | Best Fit in `tanstack-open-api`                                                                                                                    |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`happy-dom` (`^20.5.0`)**                                | **Fastest** (~150–400ms full suite startup, 2–4x faster than `jsdom`).                      | Emulated DOM in Node.js. Supports standard `fetch`, `AbortController`, `CustomEvent`, and React 19 rendering; requires tiny shims in `setup.ts` for Radix UI pointer capture (`hasPointerCapture`, `ResizeObserver`) and `EventSource`. | **Primary `unit` project** (`pnpm test`) for all Effect contract tests, hook tests, route guard tests, and `shadcn/ui` behavioral component tests. |
+| **`jsdom` (`^26.0.0`)**                                    | **Slower** (heavier spec bookkeeping per test file).                                        | Emulated DOM in Node.js; still lacks real layout (`getBoundingClientRect`), CSS cascade, and `ResizeObserver`.                                                                                                                          | **Unnecessary** when `happy-dom` is used for Node-based tests; remove duplicate `jsdom` devDependency from `forklore-fe/package.json#L57`.         |
+| **Vitest 4 Browser Mode (`@vitest/browser` + Playwright)** | **Moderate** (~2–4s headless Chromium startup; requires Playwright browser binaries in CI). | **100% Real Browser** (real CSS `@theme` / `@custom-variant dark` computed styles, real focus traps, real pointer occlusion, native `EventSource`).                                                                                     | **Optional `browser` project** (or handled by the repo's `.agents/skills/verify-*/SKILL.md` Playwright/browser runtime verification skill).        |
 
 ### 2.3 Why Network Boundary Interception Eliminates `vi.mock()` Completely
 
 In `forklore-fe` (and `tanstack-open-api`), **every external I/O operation passes through the standard WinterCG `fetch` API** (plus `EventSource` for SSE):
+
 1. **Orval API Client ([`src/shared/api/client.ts`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/src/shared/api/client.ts#L34))**: Calls `fetch(fullUrl, { ...options, credentials: "include" })` and throws `FetchError(status, message, data)` on non-2xx responses.
 2. **Better Auth Client ([`src/shared/lib/auth-client.ts`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/src/shared/lib/auth-client.ts#L3-L10))**: `createAuthClient` from `better-auth/react` calls `fetch("${baseURL}/api/auth/get-session")`, `fetch("${baseURL}/api/auth/sign-in/email")`, `fetch("${baseURL}/api/auth/sign-out")`, etc. (and accepts `fetchOptions.customFetchImpl` if a custom fetch function is desired).
 
 Therefore, by intercepting at the **HTTP network boundary** using **MSW v2 (`msw/node` `setupServer`)** (or an in-memory WinterCG `Request -> Response` handler), tests never need `vi.mock("@/shared/lib/auth-client")`, `vi.mock("@tanstack/react-query")`, or `vi.mock("@tanstack/react-router")`:
 
-| Aspect | MSW v2 (`msw/node` `setupServer`) | In-Memory Fetch Adapter (`createTestFetch`) | Recommendation |
-| :--- | :--- | :--- | :--- |
-| **Mechanism** | Intercepts Node's native `fetch` (`undici` / `http`) via `@mswjs/interceptors` ([MSW Node Integration](https://mswjs.io/docs/integrations/node)). | Injects a WinterCG `(req: Request) => Promise<Response>` router into `globalThis.fetch` and `authClient` `customFetchImpl`. | **Use MSW v2 (`msw/node`) as the canonical network harness** (with helper factories for Better Auth sessions and `hono-open-api` error envelopes). |
-| **Better Auth Compatibility** | Automatically intercepts `authClient.getSession()` (`GET /api/auth/get-session`), `useSession()`, `signIn.email()`, and `signOut()` with zero changes to `auth-client.ts`. | Requires passing `customFetchImpl` or overriding `globalThis.fetch` in `beforeEach`. | MSW's `server.use(...)` and `server.resetHandlers()` in `afterEach` provide standard, leak-free per-test overrides. |
-| **Unmocked Request Safety** | `server.listen({ onUnhandledRequest: "error" })` fails loudly if any component fires an unexpected network call. | Requires custom unhandled-route assertion logic. | Matches `hono-open-api`'s fail-loud testing philosophy. |
+| Aspect                        | MSW v2 (`msw/node` `setupServer`)                                                                                                                                          | In-Memory Fetch Adapter (`createTestFetch`)                                                                                 | Recommendation                                                                                                                                     |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mechanism**                 | Intercepts Node's native `fetch` (`undici` / `http`) via `@mswjs/interceptors` ([MSW Node Integration](https://mswjs.io/docs/integrations/node)).                          | Injects a WinterCG `(req: Request) => Promise<Response>` router into `globalThis.fetch` and `authClient` `customFetchImpl`. | **Use MSW v2 (`msw/node`) as the canonical network harness** (with helper factories for Better Auth sessions and `hono-open-api` error envelopes). |
+| **Better Auth Compatibility** | Automatically intercepts `authClient.getSession()` (`GET /api/auth/get-session`), `useSession()`, `signIn.email()`, and `signOut()` with zero changes to `auth-client.ts`. | Requires passing `customFetchImpl` or overriding `globalThis.fetch` in `beforeEach`.                                        | MSW's `server.use(...)` and `server.resetHandlers()` in `afterEach` provide standard, leak-free per-test overrides.                                |
+| **Unmocked Request Safety**   | `server.listen({ onUnhandledRequest: "error" })` fails loudly if any component fires an unexpected network call.                                                           | Requires custom unhandled-route assertion logic.                                                                            | Matches `hono-open-api`'s fail-loud testing philosophy.                                                                                            |
 
 ### 2.4 Reference Test Harness Architecture (`src/test/`)
 
@@ -510,7 +514,12 @@ export interface RenderAppOptions extends Omit<RenderOptions, "wrapper"> {
  * Ideal for behavioral route-guard, navigation, and page-level tests.
  */
 export async function renderAppRoutes(options: RenderAppOptions = {}) {
-  const { initialEntries = ["/"], user = null, queryClient = createTestQueryClient(), ...renderOptions } = options;
+  const {
+    initialEntries = ["/"],
+    user = null,
+    queryClient = createTestQueryClient(),
+    ...renderOptions
+  } = options;
 
   mockAuthSession(user);
 
@@ -546,11 +555,13 @@ export async function renderAppRoutes(options: RenderAppOptions = {}) {
  * and a minimal TanStack `RouterProvider` so `<Link>`, `useNavigate()`, and
  * `useEffectQuery()` work behaviorally without `vi.mock()`.
  */
-export async function renderWithProviders(
-  ui: React.ReactElement,
-  options: RenderAppOptions = {},
-) {
-  const { initialEntries = ["/"], user = null, queryClient = createTestQueryClient(), ...renderOptions } = options;
+export async function renderWithProviders(ui: React.ReactElement, options: RenderAppOptions = {}) {
+  const {
+    initialEntries = ["/"],
+    user = null,
+    queryClient = createTestQueryClient(),
+    ...renderOptions
+  } = options;
 
   mockAuthSession(user);
 
@@ -620,7 +631,9 @@ describe("Route Guards (Behavioral Router Navigation)", () => {
     });
 
     expect(router.state.location.pathname).toBe("/");
-    expect(await screen.findByRole("heading", { name: /20-Minute Garlic Confit/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /20-Minute Garlic Confit/i }),
+    ).toBeInTheDocument();
   });
 });
 ```
@@ -639,7 +652,11 @@ import { http, HttpResponse } from "msw";
 import type React from "react";
 import { describe, expect } from "vitest";
 import { customFetch } from "@/shared/api/client";
-import { type FunctionDescriptor, type UnauthorizedError, decodeApiError } from "@/shared/api/contracts";
+import {
+  type FunctionDescriptor,
+  type UnauthorizedError,
+  decodeApiError,
+} from "@/shared/api/contracts";
 import { honoErrorResponse, server } from "@/test/msw-server";
 import { createTestQueryClient } from "@/test/render-with-app";
 import { useEffectQuery } from "../use-effect-query";
@@ -901,10 +918,12 @@ jobs:
 #### How `@tanstack/react-start/plugin/vite` Builds for Production
 
 In `forklore-fe` (`@tanstack/react-start` `^1.141.1` with `@tanstack/react-start/plugin/vite`), `pnpm build` (`vite build`) emits two directories into `dist/`:
+
 - `dist/client/`: Static browser assets (`dist/client/assets/*`, `logo.svg`, `robots.txt`).
 - `dist/server/server.js`: An ESM WinterCG server module exporting `default: { fetch(request: Request): Promise<Response> }` ([`forklore-fe/dist/server/server.js`](file:///Users/guilhermeguerreiro/Documents/Git/forklore-fe/dist/server/server.js), [TanStack Start Hosting Docs](https://tanstack.com/start/latest/docs/framework/react/hosting)).
 
 While `vite preview` works for quick local previews, Vite's docs explicitly note that `vite preview` is intended for local previewing rather than a production server. A ~50-line zero-extra-framework Node `node:http` + `node:fs` production entry (`server.mjs`) (or `srvx`) serves:
+
 1. `/health` → `200 OK` (`{ status: "ok" }`) for Docker / Kubernetes health probes.
 2. Static assets from `./dist/client` with immutable caching on `/assets/*`.
 3. Optional reverse proxy for `/api/*`, `/tasks/*`, `/users/*`, `/files/*`, `/auth/*` to `API_INTERNAL_URL` (e.g., `http://api:9999` inside Docker Compose) so browser cookies (`credentials: "include"`) work seamlessly on the same origin without CORS friction.
@@ -980,6 +999,7 @@ src/test
 ### 3.3 Full-Stack `docker-compose.yml` Pairing with `hono-open-api`
 
 When running `tanstack-open-api` (`web`, port `3001`) alongside `hono-open-api` (`api`, port `9999`), two networking paths happen simultaneously:
+
 1. **Browser-to-API (or Browser-to-Web Proxy)**: The user's browser on the host machine accesses `http://localhost:3001`. If `VITE_API_URL` is left empty (`""`) and `server.mjs` proxies `/api/*`, `/tasks/*`, `/users/*`, `/files/*` to `API_INTERNAL_URL=http://api:9999`, all browser `fetch` and `EventSource` calls stay same-origin (`http://localhost:3001`), eliminating cross-origin cookie (`SameSite`) and CORS preflight issues. Alternatively, if `VITE_API_URL=http://localhost:9999` is used directly from the browser, `hono-open-api` must be configured with `CORS_ORIGINS=http://localhost:3001` and `BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3001`.
 2. **SSR Server-to-API (Container-to-Container)**: During SSR (`beforeLoad` / loader execution inside the `web` container), `localhost:9999` would point to the `web` container itself rather than `api`. Setting `API_INTERNAL_URL=http://api:9999` in the `web` container environment (and reading `process.env.API_INTERNAL_URL` when `typeof window === "undefined"` in `src/env.ts`) routes SSR requests directly over the Docker bridge network to `http://api:9999`.
 
@@ -1048,6 +1068,7 @@ To standardize the developer workflow across `hono-open-api` and `tanstack-open-
 ```
 
 Key `devDependencies` additions/updates over `forklore-fe`:
+
 - Upgrade `@biomejs/biome` from `1.9.4` → `^2.6.7`.
 - Add `msw` (`^2.10.0` / `^3.0.0`), `@testing-library/user-event` (`^14.6.1`), and `@vitest/coverage-v8` (`^4.0.18`).
 - Remove redundant `jsdom` (`^26.0.0`) since `happy-dom` is the standardized fast DOM environment for the `unit` project.

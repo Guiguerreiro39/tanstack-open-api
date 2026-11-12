@@ -21,11 +21,11 @@
 
 ### 1.1 `@sentry/tanstackstart-react` vs `@sentry/react` + `@sentry/vite-plugin`
 
-| Capability | `@sentry/react` + `@sentry/vite-plugin` | `@sentry/tanstackstart-react` |
-| :--- | :--- | :--- |
-| **Target Architecture** | Client-side SPA / CSR or custom SSR entry points where backend is a separate service (`hono-open-api`). | Full-stack TanStack Start apps using SSR middleware and `createServerFn` RPCs in addition to browser routing. |
-| **Browser API Surface** | Provides `init`, `tanstackRouterBrowserTracingIntegration`, `replayIntegration`, `reactErrorHandler`, `setUser`, `captureException`, `addBreadcrumb`. | Re-exports the complete `@sentry/react` browser surface on the client and `@sentry/node` on the server ([Sentry TanStack Start Docs](https://docs.sentry.io/platforms/javascript/guides/tanstackstart-react/)). |
-| **Vite Source Map Plugin** | `sentryVitePlugin` from `@sentry/vite-plugin` ([Sentry Vite Plugin Docs](https://docs.sentry.io/platforms/javascript/guides/react/sourcemaps/uploading/vite/)). | `sentryTanstackStart` from `@sentry/tanstackstart-react/vite` (wraps `@sentry/vite-plugin` and adds optional `tunnelRoute` + server function wrapping). |
+| Capability                     | `@sentry/react` + `@sentry/vite-plugin`                                                                                                                                                                                                                                                                                                                                                                       | `@sentry/tanstackstart-react`                                                                                                                                                                                   |
+| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Target Architecture**        | Client-side SPA / CSR or custom SSR entry points where backend is a separate service (`hono-open-api`).                                                                                                                                                                                                                                                                                                       | Full-stack TanStack Start apps using SSR middleware and `createServerFn` RPCs in addition to browser routing.                                                                                                   |
+| **Browser API Surface**        | Provides `init`, `tanstackRouterBrowserTracingIntegration`, `replayIntegration`, `reactErrorHandler`, `setUser`, `captureException`, `addBreadcrumb`.                                                                                                                                                                                                                                                         | Re-exports the complete `@sentry/react` browser surface on the client and `@sentry/node` on the server ([Sentry TanStack Start Docs](https://docs.sentry.io/platforms/javascript/guides/tanstackstart-react/)). |
+| **Vite Source Map Plugin**     | `sentryVitePlugin` from `@sentry/vite-plugin` ([Sentry Vite Plugin Docs](https://docs.sentry.io/platforms/javascript/guides/react/sourcemaps/uploading/vite/)).                                                                                                                                                                                                                                               | `sentryTanstackStart` from `@sentry/tanstackstart-react/vite` (wraps `@sentry/vite-plugin` and adds optional `tunnelRoute` + server function wrapping).                                                         |
 | **Starter-Kit Recommendation** | Because `tanstack-open-api` uses `@tanstack/react-start` (`package.json#L27`), use `@sentry/tanstackstart-react` if server functions/SSR middleware are enabled, or `@sentry/react` + `@sentry/vite-plugin` if keeping telemetry strictly browser-scoped behind `ObservabilityPort`. Both expose identical client APIs (`tanstackRouterBrowserTracingIntegration`, `replayIntegration`, `reactErrorHandler`). |
 
 ### 1.2 TanStack Router Tracing & Session Replay Initialization
@@ -76,6 +76,7 @@ export function initSentryClient(router: AnyRouter, apiOrigins: Array<string | R
 ```
 
 **Primary Sources**:
+
 - [Sentry React — TanStack Router Integration](https://docs.sentry.io/platforms/javascript/guides/react/features/tanstack-router/)
 - [Sentry JavaScript — `tracePropagationTargets` & `propagateTraceparent`](https://docs.sentry.io/platforms/javascript/guides/react/configuration/options/#propagateTraceparent) (`propagateTraceparent: true` available since SDK v8.22.0+ to emit W3C `traceparent` alongside `sentry-trace` and `baggage`).
 - [Sentry Session Replay — Privacy Configuration](https://docs.sentry.io/platforms/javascript/session-replay/privacy/)
@@ -232,6 +233,7 @@ Inspecting `hono-open-api` reveals a strict, standards-based observability contr
    - `hono-open-api/src/app.ts#L97` mounts `requestId()` (`hono/request-id`) on `*`.
    - If the client sends an `X-Request-Id` request header, Hono adopts it as `c.get("requestId")` and echoes `X-Request-Id` in the HTTP response headers (`hono-open-api/src/core/observability/trace.test.ts#L65-L71`). Otherwise, Hono generates a fresh UUID.
    - Every error response (`4xx` and `5xx`) in `hono-open-api/src/core/errors.ts#L156-L163` returns:
+
      ```json
      {
        "error": {
@@ -242,6 +244,7 @@ Inspecting `hono-open-api` reveals a strict, standards-based observability contr
        }
      }
      ```
+
 2. **W3C Trace Context (`traceparent`)**:
    - `hono-open-api/src/core/observability/trace.ts#L5-L97` validates inbound `traceparent` headers against `/^([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/` (rejecting version `ff`, all-zero 32-hex `traceId`, or all-zero 16-hex `parentSpanId`).
    - When valid, `createTraceContext()` preserves the browser's 32-hex `traceId`, records the browser span as `parentSpanId`, and mints a fresh 16-hex server `spanId` inside `AsyncLocalStorage<TraceContext>`.
@@ -388,14 +391,10 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
     }
 
     const requestId =
-      errorData?.error?.requestId ??
-      response.headers.get("X-Request-Id") ??
-      outboundRequestId;
+      errorData?.error?.requestId ?? response.headers.get("X-Request-Id") ?? outboundRequestId;
     const code = errorData?.error?.code;
     const message =
-      errorData?.error?.message ||
-      errorData?.message ||
-      `HTTP error ${response.status}`;
+      errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
 
     throw new FetchError({
       status: response.status,
@@ -423,16 +422,16 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
 
 In `forklore-fe/src/shared/api/contracts.ts`, errors are modeled using Effect's `Data.TaggedError`:
 
-| Error Class / Condition | HTTP Status | Classification | Telemetry Action in `ObservabilityPort` |
-| :--- | :--- | :--- | :--- |
-| `UnauthorizedError` | `401` | **Expected Domain Error** | Record breadcrumb only (`category: "api.expected_error"`). Do **not** alert Sentry/Datadog Error Tracking. |
-| `NotFoundError` | `404` | **Expected Domain Error** | Record breadcrumb only. |
-| `ConflictError` | `409` | **Expected Domain Error** | Record breadcrumb only. |
-| `ValidationError` | `422` | **Expected Domain Error** | Record breadcrumb only (attach field paths without sensitive input values). |
-| `UnknownError` / `FetchError` (`status >= 500` or network failure) | `5xx` / `0` | **Unexpected Defect** | **Report Exception** (`Sentry.captureException` + `datadogRum.addError` + `datadogLogs.logger.error`) with `{ requestId, traceId, status, path }`. |
-| `SchemaDecodeError` (`use-effect-query.ts` / `use-effect-mutation.ts`) | `200` (Contract Drift) | **Unexpected Defect** | **Report Exception** immediately — backend response violated the expected OpenAPI/Effect schema for `descriptor.path`. |
-| UnDeclared Error (`Effect.die` in `useEffectQuery`) | `4xx`/`5xx` | **Unexpected Defect** | **Report Exception** — endpoint returned an HTTP status not declared in its `FunctionDescriptor`. |
-| React 19 `onUncaughtError` / `onCaughtError` | Render phase | **Unexpected Defect** | **Report React Error** with `componentStack` (`Sentry.reactErrorHandler` + `addReactError`). |
+| Error Class / Condition                                                | HTTP Status            | Classification            | Telemetry Action in `ObservabilityPort`                                                                                                            |
+| :--------------------------------------------------------------------- | :--------------------- | :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UnauthorizedError`                                                    | `401`                  | **Expected Domain Error** | Record breadcrumb only (`category: "api.expected_error"`). Do **not** alert Sentry/Datadog Error Tracking.                                         |
+| `NotFoundError`                                                        | `404`                  | **Expected Domain Error** | Record breadcrumb only.                                                                                                                            |
+| `ConflictError`                                                        | `409`                  | **Expected Domain Error** | Record breadcrumb only.                                                                                                                            |
+| `ValidationError`                                                      | `422`                  | **Expected Domain Error** | Record breadcrumb only (attach field paths without sensitive input values).                                                                        |
+| `UnknownError` / `FetchError` (`status >= 500` or network failure)     | `5xx` / `0`            | **Unexpected Defect**     | **Report Exception** (`Sentry.captureException` + `datadogRum.addError` + `datadogLogs.logger.error`) with `{ requestId, traceId, status, path }`. |
+| `SchemaDecodeError` (`use-effect-query.ts` / `use-effect-mutation.ts`) | `200` (Contract Drift) | **Unexpected Defect**     | **Report Exception** immediately — backend response violated the expected OpenAPI/Effect schema for `descriptor.path`.                             |
+| UnDeclared Error (`Effect.die` in `useEffectQuery`)                    | `4xx`/`5xx`            | **Unexpected Defect**     | **Report Exception** — endpoint returned an HTTP status not declared in its `FunctionDescriptor`.                                                  |
+| React 19 `onUncaughtError` / `onCaughtError`                           | Render phase           | **Unexpected Defect**     | **Report React Error** with `componentStack` (`Sentry.reactErrorHandler` + `addReactError`).                                                       |
 
 Enriching `src/shared/api/contracts.ts` so every tagged error carries optional `requestId?: string` and `traceId?: string` allows UI error boundaries and toast notifications to display a support correlation ID (`Request ID: req-...`) while keeping `ObservabilityPort` metadata strongly typed.
 
@@ -564,20 +563,20 @@ if (parseResult._tag === "Left") {
 
 ## 5. Environment Variable Contract
 
-| Variable | Required | Default | Purpose |
-| :--- | :--- | :--- | :--- |
-| `VITE_API_URL` | No | `""` (browser) / `http://localhost:9999` (SSR) | Base URL for `hono-open-api`; also added to `tracePropagationTargets` and `allowedTracingUrls`. |
-| `VITE_APP_VERSION` | No | `"0.0.0"` | Release version / Git SHA shared across Sentry (`release`) and Datadog (`version`). |
-| `VITE_SENTRY_DSN` | No | `undefined` (disabled) | Enables `SentryObservabilityAdapter` when set. |
-| `VITE_SENTRY_TRACES_SAMPLE_RATE` | No | `0.2` | Sentry performance transaction sampling rate (`0.0`–`1.0`). |
-| `VITE_SENTRY_REPLAY_SAMPLE_RATE` | No | `0.1` | Sentry baseline session replay sampling rate (`1.0` on error). |
-| `SENTRY_AUTH_TOKEN` | CI only | `undefined` (skips upload) | Enables `@sentry/vite-plugin` source map upload + `.map` deletion in CI builds. |
-| `SENTRY_ORG` / `SENTRY_PROJECT` | CI only | `undefined` | Target Sentry organization and project slugs for source map upload. |
-| `VITE_DD_APPLICATION_ID` | No | `undefined` (disabled) | Enables `DatadogObservabilityAdapter` RUM when set alongside `VITE_DD_CLIENT_TOKEN`. |
-| `VITE_DD_CLIENT_TOKEN` | No | `undefined` (disabled) | Datadog Browser SDK client token (shared by RUM and Logs). |
-| `VITE_DD_SITE` | No | `"datadoghq.com"` | Datadog intake site (`datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, etc.). |
-| `VITE_DD_SERVICE` | No | `"tanstack-open-api-web"` | Unified service name across Datadog RUM and Browser Logs. |
-| `DATADOG_API_KEY` | CI only | `undefined` (skips upload) | Used by `@datadog/vite-plugin` or `datadog-ci sourcemaps upload` in GitHub Actions. |
+| Variable                         | Required | Default                                        | Purpose                                                                                         |
+| :------------------------------- | :------- | :--------------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`                   | No       | `""` (browser) / `http://localhost:9999` (SSR) | Base URL for `hono-open-api`; also added to `tracePropagationTargets` and `allowedTracingUrls`. |
+| `VITE_APP_VERSION`               | No       | `"0.0.0"`                                      | Release version / Git SHA shared across Sentry (`release`) and Datadog (`version`).             |
+| `VITE_SENTRY_DSN`                | No       | `undefined` (disabled)                         | Enables `SentryObservabilityAdapter` when set.                                                  |
+| `VITE_SENTRY_TRACES_SAMPLE_RATE` | No       | `0.2`                                          | Sentry performance transaction sampling rate (`0.0`–`1.0`).                                     |
+| `VITE_SENTRY_REPLAY_SAMPLE_RATE` | No       | `0.1`                                          | Sentry baseline session replay sampling rate (`1.0` on error).                                  |
+| `SENTRY_AUTH_TOKEN`              | CI only  | `undefined` (skips upload)                     | Enables `@sentry/vite-plugin` source map upload + `.map` deletion in CI builds.                 |
+| `SENTRY_ORG` / `SENTRY_PROJECT`  | CI only  | `undefined`                                    | Target Sentry organization and project slugs for source map upload.                             |
+| `VITE_DD_APPLICATION_ID`         | No       | `undefined` (disabled)                         | Enables `DatadogObservabilityAdapter` RUM when set alongside `VITE_DD_CLIENT_TOKEN`.            |
+| `VITE_DD_CLIENT_TOKEN`           | No       | `undefined` (disabled)                         | Datadog Browser SDK client token (shared by RUM and Logs).                                      |
+| `VITE_DD_SITE`                   | No       | `"datadoghq.com"`                              | Datadog intake site (`datadoghq.com`, `datadoghq.eu`, `us3.datadoghq.com`, etc.).               |
+| `VITE_DD_SERVICE`                | No       | `"tanstack-open-api-web"`                      | Unified service name across Datadog RUM and Browser Logs.                                       |
+| `DATADOG_API_KEY`                | CI only  | `undefined` (skips upload)                     | Used by `@datadog/vite-plugin` or `datadog-ci sourcemaps upload` in GitHub Actions.             |
 
 ---
 

@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Two-layer single-source Tailwind v4 token architecture, `[data-theme]` presets, and `DESIGN.md` contract
 

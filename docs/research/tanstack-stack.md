@@ -16,15 +16,15 @@ Use **TanStack Start (`@tanstack/react-start`) + `@tanstack/react-router-ssr-que
 
 Inspection of `forklore-fe/package.json` alongside the resolved packages in `forklore-fe/node_modules/@tanstack/*` reveals several dependency and wiring redundancies that should be cleaned up in `tanstack-open-api`:
 
-| Package in `forklore-fe/package.json` | Specifier (`package.json`) | Resolved (`.pnpm`) | Status & Recommendation for `tanstack-open-api` |
-| :--- | :--- | :--- | :--- |
-| `@tanstack/react-start` | `^1.141.1` | `1.168.49` | **Keep (Core)**. Full-stack Vite plugin, SSR/SPA mode, `createServerFn`, middleware, and request context utilities. |
-| `@tanstack/react-router` | `^1.141.1` | `1.170.32` | **Keep (Core)**. File-based routing, `createFileRoute`, `createRootRouteWithContext`, `redirect`, `notFound`. |
-| `@tanstack/react-router-ssr-query` | `^1.142.7` | `1.167.2` | **Keep (Canonical)**. Provides `setupRouterSsrQueryIntegration({ router, queryClient })` for automatic QueryClient provider wrapping, SSR dehydration/hydration, streaming, and redirect handling. |
-| `@tanstack/react-router-with-query` | `^1.130.17` | `1.130.17` | **Remove (Deprecated)**. Superseded by `@tanstack/react-router-ssr-query`. Frozen at `1.130.17` and unused anywhere in `forklore-fe/src`. |
-| `@tanstack/router-plugin` | `^1.141.1` (`dependencies`) | `1.168.35` | **Remove from `dependencies`** (or move to `devDependencies` if using standalone `tsr` CLI). `@tanstack/react-start/plugin/vite` (`@tanstack/start-plugin-core`) already embeds and configures `@tanstack/router-plugin` via the `tanstackStart({ router: { ... } })` option. |
-| `@tanstack/react-query` | `^5.80.6` | `5.102.8` | **Keep (Core)**. Note that `@tanstack/react-router-ssr-query@1.167.2` requires peer `@tanstack/react-query >= 5.102.0`; pin `^5.102.0` in `package.json`. |
-| `@tanstack/react-form` | `^1.23.5` | `1.33.5` | **Keep (Core)**. Pin `^1.33.0` for `createFormHook`, `createFormHookContexts`, `withForm`, `withFieldGroup`, and native Standard Schema v1 support. |
+| Package in `forklore-fe/package.json` | Specifier (`package.json`)  | Resolved (`.pnpm`) | Status & Recommendation for `tanstack-open-api`                                                                                                                                                                                                                               |
+| :------------------------------------ | :-------------------------- | :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@tanstack/react-start`               | `^1.141.1`                  | `1.168.49`         | **Keep (Core)**. Full-stack Vite plugin, SSR/SPA mode, `createServerFn`, middleware, and request context utilities.                                                                                                                                                           |
+| `@tanstack/react-router`              | `^1.141.1`                  | `1.170.32`         | **Keep (Core)**. File-based routing, `createFileRoute`, `createRootRouteWithContext`, `redirect`, `notFound`.                                                                                                                                                                 |
+| `@tanstack/react-router-ssr-query`    | `^1.142.7`                  | `1.167.2`          | **Keep (Canonical)**. Provides `setupRouterSsrQueryIntegration({ router, queryClient })` for automatic QueryClient provider wrapping, SSR dehydration/hydration, streaming, and redirect handling.                                                                            |
+| `@tanstack/react-router-with-query`   | `^1.130.17`                 | `1.130.17`         | **Remove (Deprecated)**. Superseded by `@tanstack/react-router-ssr-query`. Frozen at `1.130.17` and unused anywhere in `forklore-fe/src`.                                                                                                                                     |
+| `@tanstack/router-plugin`             | `^1.141.1` (`dependencies`) | `1.168.35`         | **Remove from `dependencies`** (or move to `devDependencies` if using standalone `tsr` CLI). `@tanstack/react-start/plugin/vite` (`@tanstack/start-plugin-core`) already embeds and configures `@tanstack/router-plugin` via the `tanstackStart({ router: { ... } })` option. |
+| `@tanstack/react-query`               | `^5.80.6`                   | `5.102.8`          | **Keep (Core)**. Note that `@tanstack/react-router-ssr-query@1.167.2` requires peer `@tanstack/react-query >= 5.102.0`; pin `^5.102.0` in `package.json`.                                                                                                                     |
+| `@tanstack/react-form`                | `^1.23.5`                   | `1.33.5`           | **Keep (Core)**. Pin `^1.33.0` for `createFormHook`, `createFormHookContexts`, `withForm`, `withFieldGroup`, and native Standard Schema v1 support.                                                                                                                           |
 
 ### Redundant `<QueryClientProvider>` in `forklore-fe`
 
@@ -40,7 +40,7 @@ function setupRouterSsrQueryIntegration(opts) {
   opts.router.options.Wrap = ({ children }) => {
     return jsx(QueryClientProvider, {
       client: opts.queryClient,
-      children: jsx(OGWrap, { children })
+      children: jsx(OGWrap, { children }),
     });
   };
 }
@@ -92,6 +92,7 @@ export function getRouter() {
 In `vite.config.ts`, `tanstackStart()` **must** be registered before `viteReact()` so server function compilation (`createServerFn`) and route tree code-splitting transforms run before React Fast Refresh.
 
 By default, TanStack Start runs in **Full SSR mode (`ssr: true`)**, where route `beforeLoad` and `loader` hooks are **isomorphic**:
+
 1. On initial page request, `beforeLoad` and `loader` run **on the server** (Node/Bun/Worker SSR).
 2. On subsequent client navigations, `beforeLoad` and `loader` run **in the browser**.
 
@@ -118,6 +119,7 @@ Because `hono-open-api` (`src/infra/auth/index.ts`) issues `HttpOnly`, `SameSite
 Depending on whether `tanstack-open-api` is deployed as a full-stack SSR app or a client-rendered SPA talking to `hono-open-api`, TanStack Start supports two canonical configurations:
 
 ##### Option A: Full SSR with `createServerFn` Cookie Forwarding (Recommended for SSR)
+
 Use `createServerFn` and `getRequestHeader("cookie")` from `@tanstack/react-start/server` (or `createIsomorphicFn`) so that during SSR, the incoming browser cookie is forwarded to the Better Auth backend (`hono-open-api`), and during client hydration/navigation, the cached Query data is reused without an extra round-trip:
 
 ```ts
@@ -151,8 +153,11 @@ export const authSessionQueryOptions = queryOptions({
 ```
 
 ##### Option B: Global SPA Mode or Selective SSR (`ssr: false`)
+
 If the starter kit targets a pure SPA deployment (or static hosting) backed by `hono-open-api`, configure either:
+
 1. **Global SPA mode** in `vite.config.ts`:
+
    ```ts
    tanstackStart({
      spa: {
@@ -261,6 +266,7 @@ await navigate({ to: "/login" });
 `forklore-fe/src/router.tsx` has no `defaultErrorComponent` and only a bare `() => <div>Not Found</div>` for `defaultNotFoundComponent`.
 
 Per TanStack Router's official error handling rules:
+
 - **Never call `reset()` alone** to retry a failed route loader. `reset()` only clears the React error boundary while leaving the failed loader state cached. Always call **`router.invalidate()`**, which re-runs active loaders and automatically resets the error boundary.
 - **Do not call `Route.useLoaderData()` inside `notFoundComponent`**, because the loader may have thrown `notFound()` before completing. Use `Route.useParams()`, `Route.useSearch()`, or `Route.useRouteContext()` instead.
 
@@ -273,7 +279,10 @@ export function DefaultErrorBoundary({ error }: ErrorComponentProps) {
   const router = useRouter();
 
   return (
-    <div role="alert" className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
+    <div
+      role="alert"
+      className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center"
+    >
       <h2 className="text-xl font-bold">Something went wrong</h2>
       <p className="max-w-md text-sm text-muted-foreground">
         {error instanceof Error ? error.message : "An unexpected error occurred."}
@@ -331,7 +340,7 @@ Effect (`>= 3.13.0`) implements the [Standard Schema v1](https://standardschema.
 // node_modules/effect/dist/dts/Schema.d.ts
 export declare const standardSchemaV1: <A, I>(
   schema: Schema<A, I, never>,
-  overrideOptions?: AST.ParseOptions
+  overrideOptions?: AST.ParseOptions,
 ) => StandardSchemaV1<I, A> & SchemaClass<A, I, never>;
 ```
 
@@ -341,6 +350,7 @@ TanStack Form v1 (`@tanstack/form-core/dist/esm/standardSchemaValidator.js`) nat
 
 1. **Error Shape in `field.state.meta.errors`**:
    When a Standard Schema validator fails, each item in `field.state.meta.errors` is a `StandardSchemaV1Issue` object (`{ readonly message: string; readonly path?: ReadonlyArray<...> }`), **not** a plain `string`. However, if a field also uses a custom function validator, an error item may be a `string`. Reusable `FieldError` components must normalize both:
+
    ```ts
    function formatFieldError(error: unknown): string {
      if (typeof error === "string") return error;
@@ -376,16 +386,17 @@ import { cn } from "@/shared/lib/utils";
 import { createFormHook, createFormHookContexts, useStore } from "@tanstack/react-form";
 import type { ComponentProps, ReactNode } from "react";
 
-export const {
-  fieldContext,
-  formContext,
-  useFieldContext,
-  useFormContext,
-} = createFormHookContexts();
+export const { fieldContext, formContext, useFieldContext, useFormContext } =
+  createFormHookContexts();
 
 function formatError(error: unknown): string {
   if (typeof error === "string") return error;
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
     return error.message;
   }
   return String(error);
@@ -411,7 +422,8 @@ export function FieldErrors({ className }: { className?: string }) {
   );
 }
 
-export interface TextFieldProps extends Omit<ComponentProps<typeof Input>, "id" | "name" | "value" | "onChange" | "onBlur"> {
+export interface TextFieldProps
+  extends Omit<ComponentProps<typeof Input>, "id" | "name" | "value" | "onChange" | "onBlur"> {
   label: string;
   description?: string;
 }
@@ -431,7 +443,9 @@ export function TextField({ label, description, className, ...inputProps }: Text
         onBlur={field.handleBlur}
         onChange={(e) => field.handleChange(e.target.value)}
         aria-invalid={hasError}
-        aria-describedby={hasError ? `${field.name}-error` : description ? `${field.name}-desc` : undefined}
+        aria-describedby={
+          hasError ? `${field.name}-error` : description ? `${field.name}-desc` : undefined
+        }
         className={className}
         {...inputProps}
       />
@@ -587,17 +601,17 @@ export function SignInForm() {
 
 ## 5. Summary of DX Gaps in `forklore-fe` & Concrete Recommendations for `tanstack-open-api`
 
-| Area | Current State in `forklore-fe` | Recommended Standard for `tanstack-open-api` |
-| :--- | :--- | :--- |
-| **Router + Query Packages** | Installs both `@tanstack/react-router-ssr-query` and deprecated `@tanstack/react-router-with-query`; installs `@tanstack/router-plugin` in `dependencies`. | Keep only `@tanstack/react-router-ssr-query` (`>=1.167.0`) and `@tanstack/react-query` (`>=5.102.0`); remove `@tanstack/react-router-with-query` and redundant `@tanstack/router-plugin`. |
-| **`QueryClientProvider` Wrapping** | Wrapped twice: automatically by `setupRouterSsrQueryIntegration` in `src/router.tsx` AND manually in `src/routes/__root.tsx`. | Remove manual `<QueryClientProvider>` from `src/routes/__root.tsx`; rely on `setupRouterSsrQueryIntegration`'s default `wrapQueryClient: true`. |
-| **Router Preload Caching** | `createTanStackRouter` sets `defaultPreload: "intent"` without `defaultPreloadStaleTime: 0`. | Set `defaultPreloadStaleTime: 0` so TanStack Query (`queryClient`) is the sole authority for preload cache staleness. |
-| **SSR vs Client Session Fetch** | `beforeLoad` calls `authClient.getSession()` directly, which lacks incoming `Cookie` headers during SSR and refetches on every client navigation. | Define `authSessionQueryOptions` (`staleTime: 5 min`) backed by `createIsomorphicFn` / `createServerFn` forwarding `getRequestHeader("cookie")` on the server (or configure SPA / `ssr: false` mode), and call `queryClient.ensureQueryData(authSessionQueryOptions)` in `beforeLoad`. |
-| **Protected Route Layout** | Auth guard placed on leaf route `src/routes/_app/index.tsx`; no `src/routes/_app.tsx` layout route exists; user is not returned in route context. | Create pathless layout route `src/routes/_app.tsx` (`createFileRoute("/_app")`) that validates the session in `beforeLoad` and returns `{ user, session }` into context for all `/_app/*` child routes. |
-| **Open Redirect Defense** | `src/routes/login.tsx` checks `search.redirect?.startsWith("/")`, which allows protocol-relative `//evil.com`. | Enforce `typeof url === "string" && url.startsWith("/") && !url.startsWith("//")` in `validateSearch`. |
-| **Sign-Out / Sign-In State Sync** | `UserMenu` uses `location.reload()` on sign-out. | Update/invalidate `authSessionQueryOptions` in `QueryClient` + call `await router.invalidate()` and `navigate({ to: "/login" })`. |
-| **Error & 404 Boundaries** | Missing `defaultErrorComponent`; unstyled `<div>Not Found</div>` for `defaultNotFoundComponent`. | Provide `defaultErrorComponent` (using `router.invalidate()` on Retry) and `defaultNotFoundComponent` on `createRouter`. |
-| **Form Composition & Validation** | Raw `<form.Field>` + `<form.Subscribe>` repeated across `SignInForm` and `SignUpForm`; only validates `onSubmit`. | Export `useAppForm` via `createFormHook` + `createFormHookContexts` with `TextField`, `CheckboxField`, `FieldErrors`, and `SubmitButton` primitives; use `revalidateLogic()` + `Schema.standardSchemaV1(schema)`. |
+| Area                               | Current State in `forklore-fe`                                                                                                                             | Recommended Standard for `tanstack-open-api`                                                                                                                                                                                                                                           |
+| :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Router + Query Packages**        | Installs both `@tanstack/react-router-ssr-query` and deprecated `@tanstack/react-router-with-query`; installs `@tanstack/router-plugin` in `dependencies`. | Keep only `@tanstack/react-router-ssr-query` (`>=1.167.0`) and `@tanstack/react-query` (`>=5.102.0`); remove `@tanstack/react-router-with-query` and redundant `@tanstack/router-plugin`.                                                                                              |
+| **`QueryClientProvider` Wrapping** | Wrapped twice: automatically by `setupRouterSsrQueryIntegration` in `src/router.tsx` AND manually in `src/routes/__root.tsx`.                              | Remove manual `<QueryClientProvider>` from `src/routes/__root.tsx`; rely on `setupRouterSsrQueryIntegration`'s default `wrapQueryClient: true`.                                                                                                                                        |
+| **Router Preload Caching**         | `createTanStackRouter` sets `defaultPreload: "intent"` without `defaultPreloadStaleTime: 0`.                                                               | Set `defaultPreloadStaleTime: 0` so TanStack Query (`queryClient`) is the sole authority for preload cache staleness.                                                                                                                                                                  |
+| **SSR vs Client Session Fetch**    | `beforeLoad` calls `authClient.getSession()` directly, which lacks incoming `Cookie` headers during SSR and refetches on every client navigation.          | Define `authSessionQueryOptions` (`staleTime: 5 min`) backed by `createIsomorphicFn` / `createServerFn` forwarding `getRequestHeader("cookie")` on the server (or configure SPA / `ssr: false` mode), and call `queryClient.ensureQueryData(authSessionQueryOptions)` in `beforeLoad`. |
+| **Protected Route Layout**         | Auth guard placed on leaf route `src/routes/_app/index.tsx`; no `src/routes/_app.tsx` layout route exists; user is not returned in route context.          | Create pathless layout route `src/routes/_app.tsx` (`createFileRoute("/_app")`) that validates the session in `beforeLoad` and returns `{ user, session }` into context for all `/_app/*` child routes.                                                                                |
+| **Open Redirect Defense**          | `src/routes/login.tsx` checks `search.redirect?.startsWith("/")`, which allows protocol-relative `//evil.com`.                                             | Enforce `typeof url === "string" && url.startsWith("/") && !url.startsWith("//")` in `validateSearch`.                                                                                                                                                                                 |
+| **Sign-Out / Sign-In State Sync**  | `UserMenu` uses `location.reload()` on sign-out.                                                                                                           | Update/invalidate `authSessionQueryOptions` in `QueryClient` + call `await router.invalidate()` and `navigate({ to: "/login" })`.                                                                                                                                                      |
+| **Error & 404 Boundaries**         | Missing `defaultErrorComponent`; unstyled `<div>Not Found</div>` for `defaultNotFoundComponent`.                                                           | Provide `defaultErrorComponent` (using `router.invalidate()` on Retry) and `defaultNotFoundComponent` on `createRouter`.                                                                                                                                                               |
+| **Form Composition & Validation**  | Raw `<form.Field>` + `<form.Subscribe>` repeated across `SignInForm` and `SignUpForm`; only validates `onSubmit`.                                          | Export `useAppForm` via `createFormHook` + `createFormHookContexts` with `TextField`, `CheckboxField`, `FieldErrors`, and `SubmitButton` primitives; use `revalidateLogic()` + `Schema.standardSchemaV1(schema)`.                                                                      |
 
 ---
 

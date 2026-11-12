@@ -1,11 +1,13 @@
 ---
+
 name: Warm Tactile Studio
 defaultPreset: warm-tactile
 presets:
-  - warm-tactile
-  - editorial-slate
-  - neo-brutalist
-colors:
+
+- warm-tactile
+- editorial-slate
+- neo-brutalist
+  colors:
   background: '#fef8f4'
   foreground: '#1d1b19'
   surface: '#fef8f4'
@@ -53,72 +55,72 @@ colors:
   info-foreground: '#ffffff'
   info-container: '#d9ecff'
   on-info-container: '#0d3b61'
-typography:
+  typography:
   display-lg:
-    fontFamily: Quicksand
-    fontSize: 48px
-    fontWeight: '700'
-    lineHeight: 56px
-    letterSpacing: -0.02em
+  fontFamily: Quicksand
+  fontSize: 48px
+  fontWeight: '700'
+  lineHeight: 56px
+  letterSpacing: -0.02em
   headline-xl:
-    fontFamily: Quicksand
-    fontSize: 40px
-    fontWeight: '700'
-    lineHeight: 48px
-    letterSpacing: -0.02em
+  fontFamily: Quicksand
+  fontSize: 40px
+  fontWeight: '700'
+  lineHeight: 48px
+  letterSpacing: -0.02em
   headline-lg:
-    fontFamily: Quicksand
-    fontSize: 32px
-    fontWeight: '700'
-    lineHeight: 40px
+  fontFamily: Quicksand
+  fontSize: 32px
+  fontWeight: '700'
+  lineHeight: 40px
   headline-md:
-    fontFamily: Quicksand
-    fontSize: 24px
-    fontWeight: '600'
-    lineHeight: 32px
+  fontFamily: Quicksand
+  fontSize: 24px
+  fontWeight: '600'
+  lineHeight: 32px
   headline-sm:
-    fontFamily: Quicksand
-    fontSize: 20px
-    fontWeight: '600'
-    lineHeight: 28px
+  fontFamily: Quicksand
+  fontSize: 20px
+  fontWeight: '600'
+  lineHeight: 28px
   title-md:
-    fontFamily: Quicksand
-    fontSize: 20px
-    fontWeight: '600'
-    lineHeight: 28px
+  fontFamily: Quicksand
+  fontSize: 20px
+  fontWeight: '600'
+  lineHeight: 28px
   body-lg:
-    fontFamily: Quicksand
-    fontSize: 18px
-    fontWeight: '500'
-    lineHeight: 28px
+  fontFamily: Quicksand
+  fontSize: 18px
+  fontWeight: '500'
+  lineHeight: 28px
   body-md:
-    fontFamily: Quicksand
-    fontSize: 16px
-    fontWeight: '400'
-    lineHeight: 24px
+  fontFamily: Quicksand
+  fontSize: 16px
+  fontWeight: '400'
+  lineHeight: 24px
   body-sm:
-    fontFamily: Quicksand
-    fontSize: 14px
-    fontWeight: '400'
-    lineHeight: 20px
+  fontFamily: Quicksand
+  fontSize: 14px
+  fontWeight: '400'
+  lineHeight: 20px
   label-lg:
-    fontFamily: Quicksand
-    fontSize: 14px
-    fontWeight: '700'
-    lineHeight: 16px
-    letterSpacing: 0.05em
+  fontFamily: Quicksand
+  fontSize: 14px
+  fontWeight: '700'
+  lineHeight: 16px
+  letterSpacing: 0.05em
   label-md:
-    fontFamily: Quicksand
-    fontSize: 12px
-    fontWeight: '600'
-    lineHeight: 16px
+  fontFamily: Quicksand
+  fontSize: 12px
+  fontWeight: '600'
+  lineHeight: 16px
   label-sm:
-    fontFamily: Quicksand
-    fontSize: 12px
-    fontWeight: '700'
-    lineHeight: 16px
-    letterSpacing: 0.05em
-rounded:
+  fontFamily: Quicksand
+  fontSize: 12px
+  fontWeight: '700'
+  lineHeight: 16px
+  letterSpacing: 0.05em
+  rounded:
   seed: 0.75rem
   xs: 0.25rem
   sm: 0.375rem
@@ -129,7 +131,7 @@ rounded:
   3xl: 1.5rem
   4xl: 2rem
   full: 9999px
-spacing:
+  spacing:
   base: 8px
   xs: 4px
   sm: 12px
@@ -139,6 +141,7 @@ spacing:
   gutter: 24px
   margin-mobile: 16px
   margin-desktop: 64px
+
 ---
 
 # Design System Contract (`DESIGN.md` & `src/styles/theme.css`)

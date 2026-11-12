@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Dual-transport SSE `useLiveQuery` hook, Effect-validated snapshots, and optimistic `tasks` mutations
 

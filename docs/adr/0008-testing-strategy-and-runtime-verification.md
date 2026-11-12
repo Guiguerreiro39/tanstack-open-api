@@ -1,6 +1,6 @@
 ---
-status: accepted
----
+
+## status: accepted
 
 # Behavioral Vitest 4 strategy, outer-boundary `Test Harness`, and runtime verification skill
 
