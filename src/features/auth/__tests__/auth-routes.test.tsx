@@ -90,7 +90,7 @@ describe("Auth Routes & Guards", () => {
       http.post("/api/auth/sign-in/email", postHandler),
     );
 
-    await renderAppRoutes({
+    const { router } = await renderAppRoutes({
       initialEntries: ["/login"],
       user: null,
     });
@@ -124,6 +124,10 @@ describe("Auth Routes & Guards", () => {
         email: "test@example.com",
         password: "password123",
       });
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/");
     });
   });
 });

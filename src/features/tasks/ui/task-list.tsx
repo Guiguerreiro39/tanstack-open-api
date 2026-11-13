@@ -66,7 +66,7 @@ export function TaskList({
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="w-full space-y-2.5">
           {filteredTasks.map((task) => (
             <TaskItemView key={task.id} task={task} onToggle={onToggle} onDelete={onDelete} />
           ))}
