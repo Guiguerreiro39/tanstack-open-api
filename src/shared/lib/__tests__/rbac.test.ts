@@ -56,6 +56,8 @@ describe("RBAC Permissions Matrix & Helpers", () => {
       expect(hasPermission({ user: memberUser, action: "read", resource: "task" })).toBe(true);
       expect(hasPermission({ user: memberUser, action: "update", resource: "task" })).toBe(true);
       expect(hasPermission({ user: memberUser, action: "delete", resource: "task" })).toBe(true);
+      expect(hasPermission({ user: memberUser, action: "files:delete" })).toBe(true);
+      expect(hasPermission({ user: viewerUser, action: "files:delete" })).toBe(false);
 
       // Members cannot perform :any actions
       expect(hasPermission({ user: memberUser, action: "read:any", resource: "task" })).toBe(false);

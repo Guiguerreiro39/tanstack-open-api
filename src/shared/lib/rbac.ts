@@ -153,7 +153,6 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
   let resourceType: string | undefined;
   let ownerId: string | undefined;
   let scope: ResourceScope = "own";
-  let targetAction = action;
 
   if (typeof resource === "string") {
     resourceType = resource.replace(/s$/, "");
@@ -169,19 +168,23 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
     scope = resource.scope ?? "own";
   }
 
-  if (targetAction.includes(":")) {
-    const parts = targetAction.split(":");
-    if (!resourceType) {
-      resourceType = parts[0].replace(/s$/, "");
+  let effectiveAction = action;
+  if (effectiveAction.includes(":")) {
+    const parts = effectiveAction.split(":");
+    const possibleResource = parts[0].replace(/s$/, "");
+    if (["user", "session", "task", "file"].includes(possibleResource)) {
+      if (!resourceType) {
+        resourceType = possibleResource;
+      }
+      effectiveAction = parts.slice(1).join(":");
     }
-    targetAction = parts.slice(1).join(":");
   }
 
   // If resource has an owner and user is provided, check ownership
   if (ownerId && user?.id) {
     if (ownerId !== user.id) {
       // Non-owner requires ":any" permission on the action
-      if (!targetAction.endsWith(":any")) {
+      if (!effectiveAction.endsWith(":any")) {
         return false;
       }
     }
@@ -195,20 +198,20 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
 
   if (resourceType && resourceType in statementsForRole) {
     const actions = (statementsForRole as Record<string, readonly string[]>)[resourceType];
-    return actions.includes(targetAction);
+    return actions.includes(effectiveAction);
   }
 
   // If action contains ":any", non-admins are denied (admin is already handled above)
-  if (targetAction.endsWith(":any")) {
+  if (effectiveAction.endsWith(":any")) {
     return false;
   }
 
   // Default permissions by role
   if (effectiveRole === "member") {
-    if (scope === "all" && targetAction !== "read") {
+    if (scope === "all" && effectiveAction !== "read") {
       return false;
     }
-    return ["create", "read", "update", "delete", "get", "list"].includes(targetAction);
+    return ["create", "read", "update", "delete", "get", "list"].includes(effectiveAction);
   }
 
   return false;

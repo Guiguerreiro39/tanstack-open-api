@@ -125,4 +125,23 @@ describe("customFetch and FetchError", () => {
     const result = await customFetch<void>("/api/v1/test-delete", { method: "DELETE" });
     expect(result).toBeUndefined();
   });
+
+  it("returns a Blob for non-JSON or binary responses", async () => {
+    server.use(
+      http.get("/api/v1/files/file-123/download", () => {
+        const binaryData = new Uint8Array([1, 2, 3, 4, 5]);
+        return new HttpResponse(binaryData, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": 'attachment; filename="data.bin"',
+          },
+        });
+      }),
+    );
+
+    const result = await customFetch<Blob>("/api/v1/files/file-123/download");
+    expect(result).toBeInstanceOf(Blob);
+    expect(result.size).toBe(5);
+  });
 });

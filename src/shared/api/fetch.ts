@@ -125,13 +125,10 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
     return undefined as unknown as T;
   }
 
-  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
-  if (
-    contentType.includes("application/octet-stream") ||
-    (!contentType.includes("json") && !contentType.startsWith("text/"))
-  ) {
-    return (await response.blob()) as unknown as T;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json") || contentType.includes("+json")) {
+    return response.json() as Promise<T>;
   }
 
-  return response.json() as Promise<T>;
+  return (await response.blob()) as unknown as T;
 }
