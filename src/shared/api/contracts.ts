@@ -422,12 +422,25 @@ export function useEffectMutation<
   } as unknown as UseEffectMutationResult<A, E, TVariables, TContext>;
 }
 
-export interface MatchEffectOptions {
+export type MatchEffectTag<E> = [unknown] extends [E]
+  ? string
+  : E | SchemaDecodeError extends { readonly _tag: infer Tag extends string }
+    ? Tag
+    : never;
+
+export type MatchEffectOnTag<E, Err> = Partial<{
+  [Tag in MatchEffectTag<E>]: (
+    error: Extract<E | SchemaDecodeError, { readonly _tag: Tag }>,
+  ) => Err;
+}>;
+
+export interface MatchEffectOptions<E = unknown, Err = unknown> {
   readonly showPendingOnRefetch?: boolean;
   readonly observability?: ObservabilityService;
+  readonly onTag?: MatchEffectOnTag<E, Err>;
 }
 
-export function matchEffect<T, E, Ok, Err>(
+export function matchEffect<T, E, Ok, Err, TagErr = Err>(
   effectQuery: {
     readonly isPending: boolean;
     readonly isIdle?: boolean;
@@ -438,9 +451,10 @@ export function matchEffect<T, E, Ok, Err>(
     readonly onPending: () => Ok;
     readonly onFailure: (error: E | SchemaDecodeError) => Err;
     readonly onSuccess: (data: T) => Ok;
+    readonly onTag?: MatchEffectOnTag<E, TagErr>;
   },
-  options?: MatchEffectOptions,
-): Ok | Err {
+  options?: MatchEffectOptions<E, TagErr>,
+): Ok | Err | TagErr {
   if (
     effectQuery.isPending ||
     effectQuery.isIdle ||
@@ -451,6 +465,10 @@ export function matchEffect<T, E, Ok, Err>(
 
   const effect = effectQuery.toEffect();
   const obs = options?.observability ?? getObservabilityService();
+  const onTag = {
+    ...options?.onTag,
+    ...handlers.onTag,
+  };
 
   return Effect.runSync(
     Effect.match(effect, {
@@ -460,6 +478,19 @@ export function matchEffect<T, E, Ok, Err>(
             path: (error as { path?: string })?.path,
           });
         }
+
+        const tag =
+          typeof error === "object" && error !== null && "_tag" in error
+            ? (error as { _tag: string })._tag
+            : undefined;
+
+        if (tag && Object.hasOwn(onTag, tag)) {
+          const handler = (onTag as Record<string, ((err: unknown) => TagErr) | undefined>)[tag];
+          if (typeof handler === "function") {
+            return handler(error);
+          }
+        }
+
         return handlers.onFailure(error);
       },
       onSuccess: (data) => handlers.onSuccess(data),
