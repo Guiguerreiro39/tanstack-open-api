@@ -32,7 +32,7 @@ export function TaskForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className={cn("flex items-center gap-2", className)}
+      className={cn("flex w-full items-center gap-2", className)}
       data-slot="task-form"
     >
       <Input
@@ -41,7 +41,7 @@ export function TaskForm({
         placeholder="Enter task title..."
         disabled={isSubmitting}
         autoFocus={autoFocus}
-        className="bg-surface-container-lowest border-outline-variant/60 focus-visible:ring-primary rounded-xl"
+        className="bg-surface-container-lowest border-outline-variant/60 focus-visible:ring-primary flex-1 rounded-xl"
       />
       <Button
         type="submit"

@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import * as React from "react";
 import { authClient } from "@/features/auth/api/client";
 import { invalidateAuthSession } from "@/features/auth/api/session";
-import { SignInSchema, sanitizeRedirect } from "@/features/auth/model/schemas";
+import { SignInSchema } from "@/features/auth/model/schemas";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import {
@@ -23,7 +23,7 @@ export interface SignInFormProps {
   onSwitchToSignUp?: () => void;
 }
 
-export function SignInForm({ redirectTo, onSwitchToSignUp }: SignInFormProps) {
+export function SignInForm({ redirectTo: _redirectTo, onSwitchToSignUp }: SignInFormProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const navigate = useNavigate();
@@ -51,9 +51,8 @@ export function SignInForm({ redirectTo, onSwitchToSignUp }: SignInFormProps) {
 
       await invalidateAuthSession(queryClient);
       await router.invalidate();
-      const target = sanitizeRedirect(redirectTo);
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic target route string
-      navigate({ to: target as any });
+      // biome-ignore lint/suspicious/noExplicitAny: Redirect to home page
+      await navigate({ to: "/" as any });
     },
   });
 

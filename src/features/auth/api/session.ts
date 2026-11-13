@@ -144,4 +144,11 @@ export async function invalidateAuthSession(queryClient: QueryClient): Promise<v
   await queryClient.invalidateQueries({
     queryKey: authSessionQueryOptions.queryKey,
   });
+  queryClient.removeQueries({
+    queryKey: authSessionQueryOptions.queryKey,
+  });
+  await queryClient.fetchQuery({
+    ...authSessionQueryOptions,
+    staleTime: 0,
+  });
 }
