@@ -90,11 +90,13 @@ flowchart LR
 
 ### Contract Binding (`defineContract`)
 
-Each endpoint is bound using `defineContract` (`src/shared/api/contracts.ts`), which pairs:
+All query and mutation endpoints are bound using `defineContract` (`src/shared/api/contracts.ts`) and executed through `useEffectQuery` and `useEffectMutation`. This pairs:
 
 1. The transport operation or URL.
 2. The Effect `Schema` for runtime response decoding.
 3. An error decoder that translates HTTP statuses into typed `Data.TaggedError` classes.
+
+This boundary guarantees runtime response validation against generated schemas, automatic defect reporting for 5xx failures or `SchemaDecodeError`, and automatic session resets on 401 Unauthorized.
 
 ### The 11 Status `Data.TaggedError` Hierarchy
 
@@ -116,13 +118,16 @@ All API error responses map into an explicit error taxonomy:
 | **Transport** | `UnknownError`             | Network timeout or fetch crash                      |
 | **Schema**    | `SchemaDecodeError`        | Contract drift detection (response violates schema) |
 
-Errors are consumed cleanly in React components using `matchEffect`:
+Errors are consumed cleanly in React components using `matchEffect` with `onTag` discriminant error matching:
 
 ```tsx
 matchEffect(result, {
+  onPending: () => <LoadingSkeleton />,
   onSuccess: (data) => <TaskListView tasks={data} />,
-  onForbidden: () => <AccessDeniedMessage />,
-  onError: (error) => <GenericErrorAlert error={error} />,
+  onFailure: (error) => <GenericErrorAlert error={error} />,
+  onTag: {
+    ForbiddenError: (err) => <AccessDeniedMessage error={err} />,
+  },
 });
 ```
 
@@ -203,6 +208,13 @@ sequenceDiagram
 ### Mutation Buffering Mechanics
 
 When a user mutates data locally (e.g., toggling a task checkbox), an optimistic update is applied to `["tasks"]` and the mutation is keyed under `["tasks", "mutation"]`. If an incoming SSE message arrives while `queryClient.isMutating({ mutationKey: ["tasks", "mutation"] }) > 0`, the live snapshot is buffered in memory. Only after the mutation finishes (success or rollback) is the buffered snapshot applied to the cache, preventing race-condition jitter.
+
+### Typed Error Channel & Non-Blocking Stream Degradation
+
+`useLiveQuery` inherits a typed error channel inferred from the contract descriptor (`OperationErrorStatuses<Op>`). Its `.toEffect()` method implements non-blocking stream degradation:
+
+- When cached data exists (`queryResult.data !== undefined`), `.toEffect()` succeeds with the cached data (`Effect.succeed(queryResult.data)`), ensuring transient SSE drops or reconnect cycles do not tear down the UI.
+- When no cached data exists and a stream error occurs (`streamError !== null`), `.toEffect()` fails with `streamError` (`Effect.fail(streamError)`).
 
 ---
 
