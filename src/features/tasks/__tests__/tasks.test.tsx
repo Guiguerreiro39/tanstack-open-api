@@ -1,11 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SchemaDecodeError } from "@/shared/api/contracts";
+import { setObservabilityService } from "@/shared/observability";
 import { MockEventSource } from "@/test/mock-event-source";
 import { server } from "@/test/msw-server";
+import { createSpyObservability } from "@/test/spy-observability";
 import { useTaskLiveQuery, useTaskMutation } from "../api/tasks";
 import type { TaskItem } from "../model/tasks";
 import { LiveIndicator } from "../ui/live-indicator";
@@ -321,5 +324,116 @@ describe("Tasks Feature Slice", () => {
 
     // Immediately removed
     expect(screen.queryByText("Delete me")).not.toBeInTheDocument();
+  });
+
+  it("exposes Effect contracts on all mutations via useEffectMutation", () => {
+    const queryClient = new QueryClient();
+
+    const { result } = renderHook(() => useTaskMutation(), {
+      wrapper: ({ children }) => (
+        <TaskTestWrapper client={queryClient} userRole="member">
+          {children}
+        </TaskTestWrapper>
+      ),
+    });
+
+    expect(typeof result.current.createMutation?.toEffect).toBe("function");
+    expect(typeof result.current.toggleMutation?.toEffect).toBe("function");
+    expect(typeof result.current.deleteMutation?.toEffect).toBe("function");
+  });
+
+  it("captures defect when mutation response fails schema validation", async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient();
+    const spyObs = createSpyObservability();
+    setObservabilityService(spyObs);
+
+    server.use(
+      http.get("/api/v1/tasks", () => {
+        return HttpResponse.json({
+          data: [],
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+      http.post("/api/v1/tasks", () => {
+        // Return response that violates PostApiV1Tasks201 schema (missing required fields)
+        return HttpResponse.json({ invalid: "corrupted response payload" }, { status: 201 });
+      }),
+    );
+
+    render(<TasksCreateTestComponent />, {
+      wrapper: ({ children }) => (
+        <TaskTestWrapper client={queryClient} userRole="member">
+          {children}
+        </TaskTestWrapper>
+      ),
+    });
+
+    const input = screen.getByPlaceholderText(/enter task title/i);
+    await user.type(input, "Schema violation task");
+    const submitBtn = screen.getByRole("button", { name: /create task/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      const hasSchemaDefect = spyObs.defects.some(
+        (defect) =>
+          defect.error instanceof SchemaDecodeError ||
+          (defect.error as { _tag?: string })._tag === "SchemaDecodeError",
+      );
+      expect(hasSchemaDefect).toBe(true);
+    });
+  });
+
+  it("clears auth session cache on 401 Unauthorized mutation error", async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient();
+
+    server.use(
+      http.get("/api/v1/tasks", () => {
+        return HttpResponse.json({
+          data: [
+            {
+              id: "t-auth-fail",
+              name: "Unauthorized test",
+              done: false,
+              userId: "test-user-id",
+              createdAt: "",
+              updatedAt: "",
+            },
+          ],
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+      http.delete("/api/v1/tasks/:id", () => {
+        return HttpResponse.json(
+          {
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Session expired",
+              requestId: "req-401",
+            },
+          },
+          { status: 401 },
+        );
+      }),
+    );
+
+    render(<TasksDeleteTestComponent />, {
+      wrapper: ({ children }) => (
+        <TaskTestWrapper client={queryClient} userRole="member">
+          {children}
+        </TaskTestWrapper>
+      ),
+    });
+
+    expect(await screen.findByText("Unauthorized test")).toBeInTheDocument();
+    expect(queryClient.getQueryData(["auth", "session"])).not.toBeNull();
+
+    const deleteBtn = screen.getByRole("button", { name: /delete/i });
+    await user.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(queryClient.getQueryData(["auth", "session"])).toBeNull();
+    });
   });
 });

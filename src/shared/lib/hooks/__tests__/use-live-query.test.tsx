@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineContract, SchemaDecodeError } from "@/shared/api/contracts";
@@ -270,5 +270,119 @@ describe("useLiveQuery hook", () => {
     expect(onStreamError).toHaveBeenCalledWith(expect.any(SchemaDecodeError));
     // Cache remains unchanged
     expect(queryClient.getQueryData(["tasks", "list"])).toEqual(validData);
+  });
+
+  it("degrades non-blockingly: toEffect succeeds with cached data when stream error occurs after data is loaded", () => {
+    const queryClient = new QueryClient();
+    const liveUrl = "/api/v1/tasks/live";
+
+    const cachedData = {
+      data: [{ id: "t1", name: "Cached task", done: false }],
+      meta: { nextCursor: null, hasMore: false },
+    };
+    queryClient.setQueryData(["tasks", "list"], cachedData);
+
+    const { result } = renderHook(
+      () =>
+        useLiveQuery({
+          queryOptions: {
+            queryKey: ["tasks", "list"],
+            queryFn: async () => cachedData,
+          },
+          descriptor: tasksContract,
+          liveUrl,
+        }),
+      { wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper> },
+    );
+
+    const instance = MockEventSource.instances.get("/api/v1/tasks/live");
+
+    // Emit corrupted snapshot triggering stream error
+    act(() => {
+      instance?.emit("update", { invalid: "payload" });
+    });
+
+    expect(result.current.streamError).toBeInstanceOf(SchemaDecodeError);
+    // Even though streamError is set, toEffect succeeds with cached data
+    const effect = result.current.toEffect();
+    const evaluated = Effect.runSync(effect);
+    expect(evaluated).toEqual(cachedData);
+  });
+
+  it("degrades non-blockingly: toEffect succeeds with cached data even when background HTTP refetch fails", async () => {
+    const queryClient = new QueryClient();
+    const liveUrl = "/api/v1/tasks/live";
+
+    const cachedData = {
+      data: [{ id: "t1", name: "Cached task", done: false }],
+      meta: { nextCursor: null, hasMore: false },
+    };
+    queryClient.setQueryData(["tasks", "list"], cachedData);
+
+    const { result } = renderHook(
+      () =>
+        useLiveQuery({
+          queryOptions: {
+            queryKey: ["tasks", "list"],
+            queryFn: async () => {
+              throw new Error("HTTP background fetch error");
+            },
+            retry: false,
+          },
+          descriptor: tasksContract,
+          liveUrl,
+        }),
+      { wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper> },
+    );
+
+    // TanStack Query retains query.data while query.error is set
+    expect(result.current.data).toEqual(cachedData);
+    const effect = result.current.toEffect();
+    const evaluated = Effect.runSync(effect);
+    expect(evaluated).toEqual(cachedData);
+  });
+
+  it("fails toEffect with streamError when no cached data exists and stream error occurs", () => {
+    const queryClient = new QueryClient();
+    const liveUrl = "/api/v1/tasks/live";
+
+    const { result } = renderHook(
+      () =>
+        useLiveQuery({
+          queryOptions: {
+            queryKey: ["tasks", "list"],
+            queryFn: async () => new Promise<never>(() => {}), // stays pending with undefined data
+          },
+          descriptor: tasksContract,
+          liveUrl,
+        }),
+      { wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper> },
+    );
+
+    const instance = MockEventSource.instances.get("/api/v1/tasks/live");
+
+    // Before data is resolved, stream errors
+    act(() => {
+      instance?.emit("error", {
+        data: JSON.stringify({
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Stream access denied",
+            requestId: "req-live-err",
+          },
+        }),
+      });
+    });
+
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.streamError).not.toBeNull();
+
+    // toEffect must fail with the streamError
+    const effect = result.current.toEffect();
+    const exit = Effect.runSyncExit(effect);
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.toString()).toContain("UNAUTHORIZED");
+    }
   });
 });
