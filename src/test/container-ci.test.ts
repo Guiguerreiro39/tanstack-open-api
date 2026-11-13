@@ -25,6 +25,11 @@ describe("Container Runtime & CI/CD Configurations", () => {
 
       // Build step runs generate:api and build
       expect(content).toMatch(/pnpm generate:api && pnpm build/);
+
+      // Prod deps stage skips dev-only lifecycle scripts (e.g. prepare: effect-language-service patch)
+      expect(content).toContain(
+        "RUN CI=true pnpm install --prod --frozen-lockfile --ignore-scripts",
+      );
     });
   });
 

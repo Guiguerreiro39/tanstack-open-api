@@ -28,7 +28,7 @@ RUN pnpm generate:api && pnpm build && rm -f dist/**/*.map
 
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml ./
-RUN CI=true pnpm install --prod --frozen-lockfile
+RUN CI=true pnpm install --prod --frozen-lockfile --ignore-scripts
 
 FROM node:24-slim AS runtime
 WORKDIR /app
