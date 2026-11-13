@@ -1,10 +1,20 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
+import { createRequestHandler, defaultStreamHandler } from "@tanstack/react-router/ssr/server";
 import { http as mswHttp, passthrough } from "msw";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createAppServer } from "../../server.mjs";
+import { getRouter } from "../router";
 import { server as mswServer } from "./msw-server";
+
+const testSsrHandler = async (request: Request) => {
+  const handler = createRequestHandler({
+    request,
+    createRouter: () => getRouter(),
+  });
+  return await handler(defaultStreamHandler);
+};
 
 interface TestResponse {
   statusCode: number;
@@ -136,6 +146,7 @@ describe("Production Server (server.mjs)", () => {
       host: "127.0.0.1",
       clientDir: fixturesClientDir,
       apiInternalUrl: upstreamUrl,
+      serverHandler: testSsrHandler,
     });
     await appServer.start();
     const addr = appServer.httpServer.address() as AddressInfo;
