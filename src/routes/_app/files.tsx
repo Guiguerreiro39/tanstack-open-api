@@ -21,6 +21,8 @@ import { FileDropzone } from "@/features/files/ui/file-dropzone";
 import { FileList } from "@/features/files/ui/file-list";
 import { StrategySwitcher } from "@/features/files/ui/strategy-switcher";
 import { UploadProgressList } from "@/features/files/ui/upload-progress";
+import { matchEffect } from "@/shared/api/contracts";
+import { Skeleton } from "@/shared/ui/skeleton";
 
 export const Route = createFileRoute("/_app/files")({
   component: FilesPage,
@@ -31,7 +33,7 @@ function FilesPage() {
   const [strategy, setStrategy] = React.useState<UploadStrategy>("auto");
   const [uploadQueue, setUploadQueue] = React.useState<UploadItem[]>([]);
 
-  const { data: filesData, isLoading } = useFilesQuery();
+  const filesQuery = useFilesQuery();
   const deleteMutation = useDeleteFileMutation({
     onSuccess: () => {
       toast.success("File deleted successfully");
@@ -41,7 +43,7 @@ function FilesPage() {
     },
   });
 
-  const files: FileRecord[] = filesData?.data ?? [];
+  const files: readonly FileRecord[] = filesQuery.data?.data ?? [];
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     const newItems: UploadItem[] = selectedFiles.map((file) => {
@@ -225,13 +227,44 @@ function FilesPage() {
             </span>
           </div>
 
-          <FileList
-            files={files}
-            isLoading={isLoading}
-            onDirectDownload={handleDirectDownload}
-            onPresignedDownload={handlePresignedDownload}
-            onDelete={handleDelete}
-          />
+          {matchEffect(filesQuery, {
+            onPending: () => (
+              <div className="space-y-3" data-testid="files-loading-skeleton" aria-busy="true">
+                <Skeleton className="h-16 w-full rounded-2xl" />
+                <Skeleton className="h-16 w-full rounded-2xl" />
+                <Skeleton className="h-16 w-full rounded-2xl" />
+              </div>
+            ),
+            onSuccess: (filesResponse) => (
+              <FileList
+                files={filesResponse.data}
+                onDirectDownload={handleDirectDownload}
+                onPresignedDownload={handlePresignedDownload}
+                onDelete={handleDelete}
+              />
+            ),
+            onTag: {
+              // biome-ignore lint/correctness/noComponentHookFactories: matchEffect onTag error discriminator
+              ForbiddenError: (err) => (
+                <div
+                  role="alert"
+                  className="border-destructive/40 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm font-medium"
+                >
+                  Access denied: {err.message || "You do not have permission to view files."}
+                </div>
+              ),
+            },
+            onFailure: (err) => (
+              <div
+                role="alert"
+                className="border-destructive/40 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm font-medium"
+              >
+                {"message" in err && typeof err.message === "string"
+                  ? err.message
+                  : "Failed to load files"}
+              </div>
+            ),
+          })}
         </div>
       </div>
     </div>
