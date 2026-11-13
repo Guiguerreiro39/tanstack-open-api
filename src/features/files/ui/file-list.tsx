@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { type FileRecord, formatFileSize } from "../model/files";
 
 export interface FileListProps {
-  files: FileRecord[];
+  files: readonly FileRecord[];
   onDirectDownload: (id: string, fileName?: string) => void;
   onPresignedDownload: (id: string) => void;
   onDelete: (id: string) => void;

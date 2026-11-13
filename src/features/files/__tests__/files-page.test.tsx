@@ -7,9 +7,11 @@ import { server } from "@/test/msw-server";
 import { renderAppRoutes } from "@/test/render";
 import type { FileRecord } from "../model/files";
 
+const validFileDocId = "11111111-1111-1111-1111-111111111111";
+
 const initialFiles: FileRecord[] = [
   {
-    id: "f-doc",
+    id: validFileDocId,
     userId: "u-test",
     originalName: "contract.pdf",
     mimeType: "application/pdf",
@@ -140,7 +142,7 @@ describe("Files Page & Route Integration (/_app/files)", () => {
     await user.click(deleteBtn);
 
     await waitFor(() => {
-      expect(deletedId).toBe("f-doc");
+      expect(deletedId).toBe(validFileDocId);
     });
   });
 
@@ -161,14 +163,14 @@ describe("Files Page & Route Integration (/_app/files)", () => {
           meta: { nextCursor: null, hasMore: false },
         });
       }),
-      http.get("/api/v1/files/f-doc/download", () => {
+      http.get(`/api/v1/files/${validFileDocId}/download`, () => {
         downloadRequested = true;
         return new HttpResponse(new Uint8Array([1, 2, 3]), {
           status: 200,
           headers: { "Content-Type": "application/pdf" },
         });
       }),
-      http.get("/api/v1/files/f-doc/url", () => {
+      http.get(`/api/v1/files/${validFileDocId}/url`, () => {
         urlRequested = true;
         return HttpResponse.json({
           url: "https://storage.example.com/download/contract.pdf",
@@ -199,5 +201,77 @@ describe("Files Page & Route Integration (/_app/files)", () => {
     await waitFor(() => {
       expect(urlRequested).toBe(true);
     });
+  });
+
+  it("renders loading skeletons while files query is pending", async () => {
+    server.use(
+      http.get("/api/v1/files", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return HttpResponse.json({
+          data: initialFiles,
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    expect(screen.getByTestId("files-loading-skeleton")).toBeInTheDocument();
+  });
+
+  it("renders 403 ForbiddenError banner via onTag when user lacks permission", async () => {
+    server.use(
+      http.get("/api/v1/files", () => {
+        return HttpResponse.json(
+          {
+            error: {
+              code: "FORBIDDEN",
+              message: "You do not have access to view files.",
+              requestId: "req-403",
+            },
+          },
+          { status: 403 },
+        );
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/access denied/i);
+    expect(alert).toHaveTextContent(/you do not have access to view files/i);
+  });
+
+  it("renders generic error banner via onFailure when server crashes with 500", async () => {
+    server.use(
+      http.get("/api/v1/files", () => {
+        return HttpResponse.json(
+          {
+            error: {
+              code: "INTERNAL_ERROR",
+              message: "Database failure fetching files",
+              requestId: "req-500",
+            },
+          },
+          { status: 500 },
+        );
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/database failure fetching files/i);
   });
 });

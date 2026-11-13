@@ -4,30 +4,63 @@ import {
   type UseMutationOptions,
   type UseQueryOptions,
   useInfiniteQuery,
-  useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { deleteApiV1FilesId, getApiV1Files } from "@/shared/api/generated/endpoints";
-import type { GetApiV1Files200 } from "@/shared/api/generated/models/getApiV1Files200";
-import type { GetApiV1FilesParams } from "@/shared/api/generated/models/getApiV1FilesParams";
+import { Schema } from "effect";
+import {
+  type AnyApiError,
+  defineContract,
+  type OperationErrorStatuses,
+  type StatusToEffectError,
+  type UseEffectMutationResult,
+  type UseEffectQueryResult,
+  useEffectMutation,
+  useEffectQuery,
+} from "@/shared/api/contracts";
+import {
+  deleteApiV1FilesId,
+  type GetApiV1FilesQueryError,
+  getApiV1Files,
+  getGetApiV1FilesQueryKey,
+  getGetApiV1FilesQueryOptions,
+} from "@/shared/api/generated/endpoints";
+import type { GetApiV1Files200, GetApiV1FilesParams } from "@/shared/api/generated/models";
+import { GetApiV1Files200Response } from "@/shared/api/generated/schemas";
+
+export const listFilesContract = defineContract({
+  operation: "GetApiV1Files",
+  path: "/api/v1/files",
+  dataSchema: GetApiV1Files200Response,
+});
+
+export const deleteFileContract = defineContract({
+  operation: "DeleteApiV1FilesId",
+  path: "/api/v1/files/:id",
+  dataSchema: Schema.Void,
+});
+
+export type FileListResponse = Schema.Schema.Type<typeof GetApiV1Files200Response>;
 
 export const filesQueryKeys = {
-  all: ["files"] as const,
-  lists: () => [...filesQueryKeys.all, "list"] as const,
-  list: (params?: GetApiV1FilesParams) => [...filesQueryKeys.lists(), params] as const,
-  detail: (id: string) => [...filesQueryKeys.all, "detail", id] as const,
+  all: ["/api/v1/files"] as const,
+  lists: () => [...filesQueryKeys.all] as const,
+  list: (params?: GetApiV1FilesParams) => getGetApiV1FilesQueryKey(params),
+  detail: (id: string) => [...filesQueryKeys.all, id] as const,
 };
 
 export function useFilesQuery(
   params?: GetApiV1FilesParams,
-  options?: Omit<UseQueryOptions<GetApiV1Files200>, "queryKey" | "queryFn">,
-) {
-  return useQuery({
-    queryKey: filesQueryKeys.list(params),
-    queryFn: () => getApiV1Files(params),
-    ...options,
-  });
+  options?: {
+    query?: Partial<UseQueryOptions<GetApiV1Files200, GetApiV1FilesQueryError, GetApiV1Files200>>;
+  },
+): UseEffectQueryResult<
+  FileListResponse,
+  StatusToEffectError<OperationErrorStatuses<"GetApiV1Files">>
+> {
+  return useEffectQuery(
+    getGetApiV1FilesQueryOptions<GetApiV1Files200, GetApiV1FilesQueryError>(params, options),
+    listFilesContract,
+  );
 }
 
 export function useFilesInfiniteQuery(
@@ -61,15 +94,27 @@ export function useFilesInfiniteQuery(
   });
 }
 
-export function useDeleteFileMutation(options?: UseMutationOptions<void, Error, string>) {
+export function useDeleteFileMutation<TContext = unknown>(
+  options?: UseMutationOptions<void, Error | AnyApiError, string, TContext>,
+): UseEffectMutationResult<
+  void,
+  StatusToEffectError<OperationErrorStatuses<"DeleteApiV1FilesId">>,
+  string,
+  TContext
+> {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => deleteApiV1FilesId(id),
-    onSuccess: (...args) => {
-      queryClient.invalidateQueries({ queryKey: filesQueryKeys.all });
-      options?.onSuccess?.(...args);
+  return useEffectMutation(
+    {
+      mutationKey: ["files", "mutation", "delete"],
+      mutationFn: (id: string) => deleteApiV1FilesId(id),
+      ...options,
+      onSuccess: (...args) => {
+        queryClient.invalidateQueries({ queryKey: filesQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: ["/api/v1/files"] });
+        options?.onSuccess?.(...args);
+      },
     },
-    ...options,
-  });
+    deleteFileContract,
+  );
 }
