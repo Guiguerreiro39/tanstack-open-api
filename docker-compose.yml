@@ -1,0 +1,30 @@
+services:
+  web:
+    image: tanstack-open-api-starter:local
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-0.1.0}
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://host.docker.internal:9999}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    stop_grace_period: 15s
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
