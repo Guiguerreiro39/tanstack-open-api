@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Orval OpenAPI codegen is up to date
+        run: |
+          pnpm generate:api
+          git diff --exit-code src/shared/api/generated
+          test -z "$(git status --porcelain src/shared/api/generated)"
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint & Format
+        run: pnpm biome ci .
+
+      - name: Unit & Component Tests
+        run: pnpm test
+
+      - name: Build Production Bundle
+        run: pnpm build
+
+      - name: Verify TanStack Router routeTree.gen.ts is up to date
+        run: |
+          git diff --exit-code src/routeTree.gen.ts
+          test -z "$(git status --porcelain src/routeTree.gen.ts)"
+
+      - name: Upload Sentry source maps
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          echo "Sentry auth token detected; uploading hidden source maps..."
+
+      - name: Upload Datadog source maps
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.DATADOG_API_KEY != ''
+        env:
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+        run: |
+          echo "Datadog API key detected; uploading hidden source maps..."
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build Docker image
+        run: docker build -t tanstack-open-api-starter:ci .
+
+      - name: Container runtime smoke test
+        run: |
+          docker run -d --name web-smoke -p 3000:3000 -e PORT=3000 tanstack-open-api-starter:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1; then
+              echo "Health check probe passed"
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/health | grep '"status":"ok"'
+          curl -fsS http://127.0.0.1:3000/showcase >/dev/null 2>&1
+          docker rm -f web-smoke

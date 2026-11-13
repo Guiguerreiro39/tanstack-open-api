@@ -1,0 +1,203 @@
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MockXMLHttpRequest } from "@/test/mock-xml-http-request";
+import { server } from "@/test/msw-server";
+import { renderAppRoutes } from "@/test/render";
+import type { FileRecord } from "../model/files";
+
+const initialFiles: FileRecord[] = [
+  {
+    id: "f-doc",
+    userId: "u-test",
+    originalName: "contract.pdf",
+    mimeType: "application/pdf",
+    sizeBytes: 1024 * 100,
+    checksumSha256: null,
+    status: "ready",
+    expiresAt: null,
+    createdAt: "2026-11-12T00:00:00Z",
+    updatedAt: "2026-11-12T00:00:00Z",
+  },
+];
+
+const testUser = {
+  id: "u-test",
+  role: "member" as const,
+  name: "Tester",
+  email: "tester@example.com",
+};
+
+describe("Files Page & Route Integration (/_app/files)", () => {
+  beforeEach(() => {
+    MockXMLHttpRequest.install();
+  });
+
+  afterEach(() => {
+    MockXMLHttpRequest.restore();
+    MockXMLHttpRequest.reset();
+    vi.restoreAllMocks();
+  });
+
+  it("renders files route with title, strategy switcher, dropzone, and existing files", async () => {
+    server.use(
+      http.get("/api/v1/files", () => {
+        return HttpResponse.json({
+          data: initialFiles,
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    expect(await screen.findByRole("heading", { name: "Files" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: /upload strategy/i })).toBeInTheDocument();
+    expect(screen.getByTestId("file-dropzone")).toBeInTheDocument();
+    expect(await screen.findByText("contract.pdf")).toBeInTheDocument();
+    expect(screen.getByText("100 KB")).toBeInTheDocument();
+  });
+
+  it("uploads dropped file and adds it to upload queue", async () => {
+    let uploadCalled = false;
+
+    server.use(
+      http.get("/api/v1/files", () => {
+        return HttpResponse.json({
+          data: initialFiles,
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+    );
+
+    MockXMLHttpRequest.onSendHandler = (xhr) => {
+      uploadCalled = true;
+      xhr.simulateProgress(50, 100);
+      xhr.simulateResponse(201, {
+        id: "f-new",
+        userId: "u-test",
+        originalName: "upload.png",
+        mimeType: "image/png",
+        sizeBytes: 500,
+        checksumSha256: null,
+        status: "ready",
+        expiresAt: null,
+        createdAt: "2026-11-12T02:00:00Z",
+        updatedAt: "2026-11-12T02:00:00Z",
+      });
+    };
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    const dropzone = await screen.findByTestId("file-dropzone");
+    const newFile = new File(["dummy png content"], "upload.png", { type: "image/png" });
+
+    fireEvent.drop(dropzone, {
+      dataTransfer: {
+        files: [newFile],
+      },
+    });
+
+    await waitFor(() => {
+      expect(uploadCalled).toBe(true);
+    });
+
+    expect(await screen.findByText("upload.png")).toBeInTheDocument();
+  });
+
+  it("deletes a file when delete button is clicked", async () => {
+    const user = userEvent.setup();
+    let deletedId: string | null = null;
+
+    server.use(
+      http.get("/api/v1/files", () => {
+        return HttpResponse.json({
+          data: initialFiles,
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+      http.delete("/api/v1/files/:id", ({ params }) => {
+        deletedId = params.id as string;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    expect(await screen.findByText("contract.pdf")).toBeInTheDocument();
+
+    const deleteBtn = screen.getByRole("button", { name: /delete contract\.pdf/i });
+    await user.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(deletedId).toBe("f-doc");
+    });
+  });
+
+  it("triggers direct download and presigned URL download actions", async () => {
+    const user = userEvent.setup();
+    let downloadRequested = false;
+    let urlRequested = false;
+
+    // Spy on URL methods and anchor click to prevent happy-dom navigation
+    vi.spyOn(window.URL, "createObjectURL").mockReturnValue("blob:http://localhost/test");
+    vi.spyOn(window.URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    server.use(
+      http.get("/api/v1/files", () => {
+        return HttpResponse.json({
+          data: initialFiles,
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+      http.get("/api/v1/files/f-doc/download", () => {
+        downloadRequested = true;
+        return new HttpResponse(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "Content-Type": "application/pdf" },
+        });
+      }),
+      http.get("/api/v1/files/f-doc/url", () => {
+        urlRequested = true;
+        return HttpResponse.json({
+          url: "https://storage.example.com/download/contract.pdf",
+          expiresInSeconds: 300,
+        });
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/files"],
+      user: testUser,
+    });
+
+    expect(await screen.findByText("contract.pdf")).toBeInTheDocument();
+
+    // Trigger direct stream download
+    const downloadBtn = screen.getByRole("button", { name: /download contract\.pdf/i });
+    await user.click(downloadBtn);
+
+    await waitFor(() => {
+      expect(downloadRequested).toBe(true);
+    });
+
+    // Trigger presigned download URL
+    const presignedBtn = screen.getByRole("button", { name: /signed url contract\.pdf/i });
+    await user.click(presignedBtn);
+
+    await waitFor(() => {
+      expect(urlRequested).toBe(true);
+    });
+  });
+});
