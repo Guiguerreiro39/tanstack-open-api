@@ -168,11 +168,20 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
     scope = resource.scope ?? "own";
   }
 
+  let effectiveAction = action;
+  if (!resourceType && effectiveAction.includes(":") && !effectiveAction.endsWith(":any")) {
+    const colonIndex = effectiveAction.indexOf(":");
+    const prefix = effectiveAction.slice(0, colonIndex);
+    const subAction = effectiveAction.slice(colonIndex + 1);
+    resourceType = prefix.replace(/s$/, "");
+    effectiveAction = subAction;
+  }
+
   // If resource has an owner and user is provided, check ownership
   if (ownerId && user?.id) {
     if (ownerId !== user.id) {
       // Non-owner requires ":any" permission on the action
-      if (!action.endsWith(":any")) {
+      if (!effectiveAction.endsWith(":any")) {
         return false;
       }
     }
@@ -186,20 +195,20 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
 
   if (resourceType && resourceType in statementsForRole) {
     const actions = (statementsForRole as Record<string, readonly string[]>)[resourceType];
-    return actions.includes(action);
+    return actions.includes(effectiveAction);
   }
 
   // If action contains ":any", non-admins are denied (admin is already handled above)
-  if (action.endsWith(":any")) {
+  if (effectiveAction.endsWith(":any")) {
     return false;
   }
 
   // Default permissions by role
   if (effectiveRole === "member") {
-    if (scope === "all" && action !== "read") {
+    if (scope === "all" && effectiveAction !== "read") {
       return false;
     }
-    return ["create", "read", "update", "delete", "get", "list"].includes(action);
+    return ["create", "read", "update", "delete", "get", "list"].includes(effectiveAction);
   }
 
   return false;

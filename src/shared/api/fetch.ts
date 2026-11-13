@@ -121,5 +121,10 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
     return undefined as unknown as T;
   }
 
-  return response.json() as Promise<T>;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json") || contentType.includes("+json")) {
+    return response.json() as Promise<T>;
+  }
+
+  return (await response.blob()) as unknown as T;
 }
