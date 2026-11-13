@@ -4,6 +4,7 @@ import { useTaskLiveQuery, useTaskMutation } from "@/features/tasks/api/tasks";
 import { LiveIndicator } from "@/features/tasks/ui/live-indicator";
 import { TaskForm } from "@/features/tasks/ui/task-form";
 import { TaskList } from "@/features/tasks/ui/task-list";
+import { matchEffect } from "@/shared/api/contracts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 
@@ -11,11 +12,30 @@ export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
 });
 
-function TasksPage() {
-  const { data, liveStatus, lastPingAt, isPending, streamError } = useTaskLiveQuery();
-  const { createTask, isCreating, toggleTask, deleteTask } = useTaskMutation();
+function TasksForbiddenFallback() {
+  return (
+    <div className="border-destructive/40 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm font-medium">
+      Access denied: You do not have permission to view tasks.
+    </div>
+  );
+}
 
-  const tasks = data?.data ?? [];
+function TasksUnauthorizedFallback() {
+  return (
+    <div className="border-destructive/40 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm font-medium">
+      Please sign in to view your tasks.
+    </div>
+  );
+}
+
+const tasksTagHandlers = {
+  ForbiddenError: () => <TasksForbiddenFallback />,
+  UnauthorizedError: () => <TasksUnauthorizedFallback />,
+};
+
+export function TasksPage() {
+  const tasksLiveQuery = useTaskLiveQuery();
+  const { createTask, isCreating, toggleTask, deleteTask } = useTaskMutation();
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -36,7 +56,10 @@ function TasksPage() {
         </div>
 
         <div>
-          <LiveIndicator status={liveStatus} lastPingAt={lastPingAt} />
+          <LiveIndicator
+            status={tasksLiveQuery.liveStatus}
+            lastPingAt={tasksLiveQuery.lastPingAt}
+          />
         </div>
       </div>
 
@@ -55,25 +78,34 @@ function TasksPage() {
 
       {/* Task List Section */}
       <div className="space-y-4">
-        {streamError && (
+        {tasksLiveQuery.data && tasksLiveQuery.streamError && (
           <div className="border-destructive/40 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm font-medium">
-            Stream notice: {streamError.message}
+            Stream notice: {tasksLiveQuery.streamError.message}
           </div>
         )}
 
-        {isPending && tasks.length === 0 ? (
-          <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-2xl" />
-            <Skeleton className="h-16 w-full rounded-2xl" />
-            <Skeleton className="h-16 w-full rounded-2xl" />
-          </div>
-        ) : (
-          <TaskList
-            tasks={tasks}
-            onToggle={(id, done) => toggleTask({ id, done })}
-            onDelete={(id) => deleteTask({ id })}
-          />
-        )}
+        {matchEffect(tasksLiveQuery, {
+          onPending: () => (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full rounded-2xl" />
+              <Skeleton className="h-16 w-full rounded-2xl" />
+              <Skeleton className="h-16 w-full rounded-2xl" />
+            </div>
+          ),
+          onSuccess: (data) => (
+            <TaskList
+              tasks={data.data}
+              onToggle={(id, done) => toggleTask({ id, done })}
+              onDelete={(id) => deleteTask({ id })}
+            />
+          ),
+          onFailure: (error) => (
+            <div className="border-destructive/40 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm font-medium">
+              Failed to load tasks: {error.message}
+            </div>
+          ),
+          onTag: tasksTagHandlers,
+        })}
       </div>
     </div>
   );

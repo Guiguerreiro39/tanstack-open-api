@@ -4,7 +4,7 @@ import {
   type UseQueryOptions,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 import { createParser } from "eventsource-parser";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -41,12 +41,12 @@ export interface UseLiveQueryOptions<
   readonly baseDelayMs?: number;
   readonly maxDelayMs?: number;
   readonly mutationKey?: MutationKey;
-  readonly onStreamError?: (error: AnyApiError | SchemaDecodeError) => void;
+  readonly onStreamError?: (error: E | SchemaDecodeError) => void;
 }
 
 export type UseLiveQueryResult<A, E> = UseEffectQueryResult<A, E> & {
   readonly liveStatus: LiveConnectionStatus;
-  readonly streamError: AnyApiError | SchemaDecodeError | null;
+  readonly streamError: E | SchemaDecodeError | null;
   readonly lastPingAt: number | null;
 };
 
@@ -124,7 +124,7 @@ export function useLiveQuery<
   const [liveStatus, setLiveStatus] = useState<LiveConnectionStatus>(
     isEnabled ? "connecting" : "idle",
   );
-  const [streamError, setStreamError] = useState<AnyApiError | SchemaDecodeError | null>(null);
+  const [streamError, setStreamError] = useState<E | SchemaDecodeError | null>(null);
   const [lastPingAt, setLastPingAt] = useState<number | null>(null);
 
   const queryResult = useEffectQuery(
@@ -289,8 +289,8 @@ export function useLiveQuery<
           event.data.length > 0
         ) {
           const decoded = decodeSseErrorFrame(event.data);
-          setStreamError(decoded);
-          onStreamErrorRef.current?.(decoded);
+          setStreamError(decoded as E);
+          onStreamErrorRef.current?.(decoded as E);
           recordErrorOrDefect(getObservabilityService(), decoded);
           return;
         }
@@ -339,9 +339,9 @@ export function useLiveQuery<
                 requestId: "unknown",
               }),
             );
-            setStreamError(err);
+            setStreamError(err as E);
             setLiveStatus("error");
-            onStreamErrorRef.current?.(err);
+            onStreamErrorRef.current?.(err as E);
             recordErrorOrDefect(getObservabilityService(), err);
             return;
           }
@@ -381,8 +381,8 @@ export function useLiveQuery<
               data: rawBody as HonoErrorEnvelope | undefined,
             });
             const decodedErr = decodeApiError(fetchErr);
-            setStreamError(decodedErr);
-            onStreamErrorRef.current?.(decodedErr);
+            setStreamError(decodedErr as E);
+            onStreamErrorRef.current?.(decodedErr as E);
             recordErrorOrDefect(getObservabilityService(), decodedErr);
 
             // Halt retries on non-retryable 4xx
@@ -409,8 +409,8 @@ export function useLiveQuery<
                 handlePingData(event.data);
               } else if (event.event === "error") {
                 const decoded = decodeSseErrorFrame(event.data);
-                setStreamError(decoded);
-                onStreamErrorRef.current?.(decoded);
+                setStreamError(decoded as E);
+                onStreamErrorRef.current?.(decoded as E);
                 recordErrorOrDefect(getObservabilityService(), decoded);
               }
             },
@@ -454,8 +454,19 @@ export function useLiveQuery<
     };
   }, [liveUrl, isEnabled, hasBearerMode, baseDelayMs, maxDelayMs, queryClient]);
 
+  const toEffect = (): Effect.Effect<A, E | SchemaDecodeError> => {
+    if (queryResult.data !== undefined) {
+      return Effect.succeed(queryResult.data);
+    }
+    if (streamError !== null) {
+      return Effect.fail(streamError);
+    }
+    return queryResult.toEffect();
+  };
+
   return {
     ...queryResult,
+    toEffect,
     liveStatus,
     streamError,
     lastPingAt,
