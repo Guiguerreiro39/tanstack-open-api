@@ -280,6 +280,44 @@ describe("Production Server (server.mjs)", () => {
       expect(res.body).toContain("event: update");
     });
 
+    it("aborts upstream proxy request when client disconnects prematurely", async () => {
+      let upstreamClosed = false;
+      const hungServer = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Type": "text/event-stream" });
+        res.write("data: initial\n\n");
+        _req.on("close", () => {
+          upstreamClosed = true;
+        });
+      });
+      await new Promise<void>((r) => hungServer.listen(0, "127.0.0.1", () => r()));
+      const hungPort = (hungServer.address() as AddressInfo).port;
+
+      const proxyApp = createAppServer({
+        port: 0,
+        host: "127.0.0.1",
+        apiInternalUrl: `http://127.0.0.1:${hungPort}`,
+      });
+      await proxyApp.start();
+      const proxyPort = (proxyApp.httpServer.address() as AddressInfo).port;
+
+      try {
+        await new Promise<void>((done) => {
+          const clientReq = http.get(`http://127.0.0.1:${proxyPort}/api/v1/tasks/live`, (res) => {
+            res.once("data", () => {
+              clientReq.destroy();
+              setTimeout(() => {
+                expect(upstreamClosed).toBe(true);
+                done();
+              }, 100);
+            });
+          });
+        });
+      } finally {
+        hungServer.close();
+        await proxyApp.stop();
+      }
+    });
+
     it("returns 502 Bad Gateway when upstream service is unreachable", async () => {
       // Create a server pointing to a non-existent port (e.g. 59999)
       const offlineApp = createAppServer({

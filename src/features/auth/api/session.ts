@@ -1,6 +1,7 @@
 import { type QueryClient, queryOptions, useQuery } from "@tanstack/react-query";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { Schema } from "effect";
+import { registerAuthSessionQueryOptions } from "@/shared/lib/auth-session-bridge";
 import type { ObservabilityService } from "@/shared/observability";
 import { authClient } from "./client";
 
@@ -123,6 +124,8 @@ export const authSessionQueryOptions = queryOptions({
   staleTime: 5 * 60 * 1000,
   gcTime: 30 * 60 * 1000,
 });
+
+registerAuthSessionQueryOptions(authSessionQueryOptions);
 
 export function useAuthSession() {
   const query = useQuery(authSessionQueryOptions);

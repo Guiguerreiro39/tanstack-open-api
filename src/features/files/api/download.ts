@@ -48,6 +48,7 @@ export async function downloadFileDirect(
       const blob = await customFetch<Blob>(`/api/v1/files/${id}/download`, {
         method: "GET",
         signal: options.signal,
+        responseType: "blob",
       });
 
       if (typeof window !== "undefined" && typeof window.URL?.createObjectURL === "function") {

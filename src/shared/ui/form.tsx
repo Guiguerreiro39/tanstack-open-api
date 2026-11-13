@@ -5,12 +5,54 @@ import { cn } from "@/shared/lib/utils";
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
 
-export const { useAppForm, withForm } = createFormHook({
+const { useAppForm: baseUseAppForm, withForm } = createFormHook({
   fieldContext,
   formContext,
   fieldComponents: {},
   formComponents: {},
 });
+
+export { withForm };
+
+export const useAppForm: typeof baseUseAppForm = ((opts?: Record<string, unknown>) => {
+  const isSubmittingRef = React.useRef(false);
+  const userOnSubmit = (
+    opts as { onSubmit?: (params: unknown) => Promise<void> | void } | undefined
+  )?.onSubmit;
+
+  const wrappedOptions = React.useMemo(() => {
+    if (!opts) return opts;
+    return {
+      ...opts,
+      onSubmit: userOnSubmit
+        ? async (params: unknown) => {
+            if (isSubmittingRef.current) return;
+            isSubmittingRef.current = true;
+            try {
+              await userOnSubmit(params);
+            } finally {
+              isSubmittingRef.current = false;
+            }
+          }
+        : undefined,
+    };
+  }, [opts, userOnSubmit]);
+
+  const form = baseUseAppForm(wrappedOptions as never);
+
+  const originalHandleSubmit = form.handleSubmit;
+  form.handleSubmit = React.useCallback(
+    async (submitMeta?: unknown) => {
+      if (isSubmittingRef.current || form.state.isSubmitting) {
+        return;
+      }
+      return originalHandleSubmit.call(form, submitMeta);
+    },
+    [form, originalHandleSubmit],
+  ) as unknown as typeof form.handleSubmit;
+
+  return form;
+}) as unknown as typeof baseUseAppForm;
 
 interface FormFieldContextValue {
   name: string;

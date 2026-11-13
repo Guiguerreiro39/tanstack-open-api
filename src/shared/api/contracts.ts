@@ -6,8 +6,10 @@ import {
   type UseQueryResult,
   useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { Data, Effect, Schema } from "effect";
+import { useEffect } from "react";
 import { FetchError } from "@/shared/api/fetch";
 import {
   getObservabilityService,
@@ -211,6 +213,7 @@ export interface FunctionDescriptor<A, E, I = unknown> {
   readonly path: string;
   readonly dataSchema: Schema.Schema<A, I, never>;
   readonly decodeError?: (error: unknown) => E;
+  readonly observability?: ObservabilityService;
 }
 
 /**
@@ -269,6 +272,38 @@ export function useEffectQuery<
   descriptor: FunctionDescriptor<A, E, I>,
 ): UseEffectQueryResult<A, E> {
   const query = useQuery(queryOptions);
+  const queryClient = useQueryClient();
+  const obs = descriptor.observability ?? getObservabilityService();
+
+  useEffect(() => {
+    if (query.error) {
+      const decoder = descriptor.decodeError || decodeApiError;
+      const decoded = decoder(query.error) as E;
+      if (obs) {
+        recordErrorOrDefect(obs, decoded, { path: descriptor.path });
+      }
+      if (
+        (decoded as { status?: number }).status === 401 ||
+        (decoded as { _tag?: string })._tag === "UnauthorizedError"
+      ) {
+        queryClient.setQueryData(["auth", "session"], null);
+      }
+    }
+  }, [query.error, descriptor.path, descriptor.decodeError, obs, queryClient]);
+
+  useEffect(() => {
+    if (query.data !== undefined) {
+      const parseResult = Schema.decodeUnknownEither(descriptor.dataSchema)(query.data);
+      if (parseResult._tag === "Left" && obs) {
+        obs.captureDefect(
+          new SchemaDecodeError({
+            path: descriptor.path,
+            cause: parseResult.left,
+          }),
+        );
+      }
+    }
+  }, [query.data, descriptor.path, descriptor.dataSchema, obs]);
 
   const toEffect = (): Effect.Effect<A, E | SchemaDecodeError> => {
     if (query.isPending) {
@@ -323,6 +358,38 @@ export function useEffectMutation<
   descriptor: FunctionDescriptor<A, E, I>,
 ): UseEffectMutationResult<A, E, TVariables, TContext> {
   const mutation = useMutation(mutationOptions);
+  const queryClient = useQueryClient();
+  const obs = descriptor.observability ?? getObservabilityService();
+
+  useEffect(() => {
+    if (mutation.error) {
+      const decoder = descriptor.decodeError || decodeApiError;
+      const decoded = decoder(mutation.error) as E;
+      if (obs) {
+        recordErrorOrDefect(obs, decoded, { path: descriptor.path });
+      }
+      if (
+        (decoded as { status?: number }).status === 401 ||
+        (decoded as { _tag?: string })._tag === "UnauthorizedError"
+      ) {
+        queryClient.setQueryData(["auth", "session"], null);
+      }
+    }
+  }, [mutation.error, descriptor.path, descriptor.decodeError, obs, queryClient]);
+
+  useEffect(() => {
+    if (mutation.data !== undefined) {
+      const parseResult = Schema.decodeUnknownEither(descriptor.dataSchema)(mutation.data);
+      if (parseResult._tag === "Left" && obs) {
+        obs.captureDefect(
+          new SchemaDecodeError({
+            path: descriptor.path,
+            cause: parseResult.left,
+          }),
+        );
+      }
+    }
+  }, [mutation.data, descriptor.path, descriptor.dataSchema, obs]);
 
   const toEffect = (): Effect.Effect<A, E | SchemaDecodeError> => {
     if (mutation.isPending || mutation.isIdle) {
@@ -363,6 +430,7 @@ export interface MatchEffectOptions {
 export function matchEffect<T, E, Ok, Err>(
   effectQuery: {
     readonly isPending: boolean;
+    readonly isIdle?: boolean;
     readonly isRefetching?: boolean;
     readonly toEffect: () => Effect.Effect<T, E | SchemaDecodeError>;
   },
@@ -373,7 +441,11 @@ export function matchEffect<T, E, Ok, Err>(
   },
   options?: MatchEffectOptions,
 ): Ok | Err {
-  if (effectQuery.isPending || (options?.showPendingOnRefetch && effectQuery.isRefetching)) {
+  if (
+    effectQuery.isPending ||
+    effectQuery.isIdle ||
+    (options?.showPendingOnRefetch && effectQuery.isRefetching)
+  ) {
     return handlers.onPending();
   }
 

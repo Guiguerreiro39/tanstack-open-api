@@ -1,5 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type * as React from "react";
+import * as React from "react";
+import {
+  defaultSessionQueryFn,
+  getAuthSessionQueryOptions,
+  registerQueryClient,
+  type SessionData,
+} from "@/shared/lib/auth-session-bridge";
 import {
   type AppRole,
   hasPermission,
@@ -17,11 +23,6 @@ export interface CanProps {
   children: React.ReactNode;
 }
 
-interface AuthSessionData {
-  user?: RbacUser | null;
-  session?: unknown;
-}
-
 export function Can({
   role,
   action,
@@ -31,18 +32,27 @@ export function Can({
   children,
 }: CanProps) {
   const queryClient = useQueryClient();
-  const cachedSession = queryClient.getQueryData<AuthSessionData>(["auth", "session"]);
-  const { data: sessionData } = useQuery<AuthSessionData | null>({
-    queryKey: ["auth", "session"],
+
+  React.useEffect(() => {
+    return registerQueryClient(queryClient);
+  }, [queryClient]);
+
+  const bridgeOptions = getAuthSessionQueryOptions();
+  const cachedSession = queryClient.getQueryData<SessionData>(["auth", "session"]);
+
+  const { data: sessionData } = useQuery({
+    queryKey: ["auth", "session"] as const,
     enabled: directUser === undefined,
     initialData: () => cachedSession ?? null,
-    staleTime: Number.POSITIVE_INFINITY,
-    queryFn: () =>
-      (queryClient.getQueryData(["auth", "session"]) as AuthSessionData | null) ?? null,
-  });
+    staleTime:
+      typeof bridgeOptions?.staleTime === "number" ? bridgeOptions.staleTime : 5 * 60 * 1000,
+    queryFn: bridgeOptions?.queryFn ? (bridgeOptions.queryFn as never) : defaultSessionQueryFn,
+  }) as { data?: SessionData | null };
 
   const currentUser =
-    directUser !== undefined ? directUser : (sessionData?.user ?? cachedSession?.user ?? null);
+    directUser !== undefined
+      ? directUser
+      : ((sessionData?.user ?? cachedSession?.user ?? null) as RbacUser | null);
 
   if (role && !hasRole(currentUser, role)) {
     return <>{fallback}</>;

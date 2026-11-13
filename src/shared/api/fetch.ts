@@ -1,4 +1,9 @@
 import { resolveApiUrl } from "@/shared/config/env";
+import { resetAuthSessionCache } from "@/shared/lib/auth-session-bridge";
+
+export interface CustomFetchOptions extends RequestInit {
+  responseType?: "json" | "blob" | "text";
+}
 
 export interface HonoErrorEnvelope {
   error?: {
@@ -63,7 +68,7 @@ export function createW3CTraceparent(): { traceparent: string; traceId: string; 
   };
 }
 
-export async function customFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+export async function customFetch<T>(url: string, options: CustomFetchOptions = {}): Promise<T> {
   const fullUrl = resolveApiUrl(url);
 
   const headers = new Headers(options.headers);
@@ -110,6 +115,10 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
       response.statusText ||
       `HTTP error ${response.status}`;
 
+    if (response.status === 401) {
+      resetAuthSessionCache();
+    }
+
     throw new FetchError({
       status: response.status,
       code,
@@ -123,6 +132,15 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
 
   if (response.status === 204) {
     return undefined as unknown as T;
+  }
+
+  const contentDisposition = response.headers.get("content-disposition") ?? "";
+  if (options.responseType === "blob" || contentDisposition.includes("attachment")) {
+    return (await response.blob()) as unknown as T;
+  }
+
+  if (options.responseType === "text") {
+    return (await response.text()) as unknown as T;
   }
 
   const contentType = response.headers.get("content-type") ?? "";

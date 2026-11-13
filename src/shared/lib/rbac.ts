@@ -135,6 +135,17 @@ export interface HasPermissionOptions {
 }
 
 export function hasPermission({ role, user, resource, action }: HasPermissionOptions): boolean {
+  // If neither role nor user is specified, caller is unauthenticated anonymous visitor
+  if (role === undefined && user === undefined) {
+    return false;
+  }
+  if (role === null && user === null) {
+    return false;
+  }
+  if (!role && !user) {
+    return false;
+  }
+
   const effectiveRole = normalizeRole(role ?? user?.role);
 
   if (effectiveRole === "admin") {
@@ -196,9 +207,13 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
     return false;
   }
 
-  if (resourceType && resourceType in statementsForRole) {
-    const actions = (statementsForRole as Record<string, readonly string[]>)[resourceType];
-    return actions.includes(effectiveAction);
+  if (resourceType) {
+    if (resourceType in statementsForRole) {
+      const actions = (statementsForRole as Record<string, readonly string[]>)[resourceType];
+      return actions.includes(effectiveAction);
+    }
+    // Fail closed: unrecognized or undeclared resource for non-admin
+    return false;
   }
 
   // If action contains ":any", non-admins are denied (admin is already handled above)

@@ -32,8 +32,8 @@ export function sanitizeRedirect(url?: string | null): string {
   if (!url || typeof url !== "string") {
     return "/";
   }
-  // Disallow protocol-relative URLs (e.g. "//evil.com") and absolute URIs
-  if (url.startsWith("/") && !url.startsWith("//") && !url.includes("://")) {
+  // Disallow protocol-relative URLs (e.g. "//evil.com", "/\evil.com") and absolute URIs
+  if (url.startsWith("/") && !url.startsWith("//") && !url.includes("://") && !url.includes("\\")) {
     return url;
   }
   return "/";

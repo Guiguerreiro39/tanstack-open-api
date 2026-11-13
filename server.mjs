@@ -126,6 +126,17 @@ export async function createAppHandler(options = {}) {
         },
       );
 
+      res.on("close", () => {
+        if (!res.writableEnded && !proxyReq.destroyed) {
+          proxyReq.destroy();
+        }
+      });
+      req.on("aborted", () => {
+        if (!proxyReq.destroyed) {
+          proxyReq.destroy();
+        }
+      });
+
       proxyReq.on("error", (err) => {
         console.error(`Proxy error for ${url.pathname}:`, err);
         if (!res.headersSent) {

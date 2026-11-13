@@ -15,7 +15,7 @@ import {
   type UseEffectQueryResult,
   useEffectQuery,
 } from "@/shared/api/contracts";
-import { FetchError, type HonoErrorEnvelope } from "@/shared/api/fetch";
+import { createW3CTraceparent, FetchError, type HonoErrorEnvelope } from "@/shared/api/fetch";
 import { resolveApiUrl } from "@/shared/config/env";
 import { getObservabilityService, recordErrorOrDefect } from "@/shared/observability";
 
@@ -131,7 +131,8 @@ export function useLiveQuery<
     {
       ...queryOptions,
       enabled: isEnabled,
-      staleTime: liveStatus === "connected" ? Number.POSITIVE_INFINITY : queryOptions.staleTime,
+      staleTime:
+        liveStatus === "connected" ? Number.POSITIVE_INFINITY : (queryOptions.staleTime ?? 60_000),
     },
     descriptor,
   );
@@ -157,9 +158,34 @@ export function useLiveQuery<
       });
 
       if (activeMutations === 0 && bufferedSnapshotRef.current !== null) {
-        const flushData = bufferedSnapshotRef.current;
-        bufferedSnapshotRef.current = null;
-        queryClient.setQueryData(queryKeyRef.current as QueryKey, flushData);
+        queueMicrotask(() => {
+          const stillActive = queryClient.isMutating({
+            mutationKey: mutationKeyRef.current,
+          });
+          if (stillActive > 0 || bufferedSnapshotRef.current === null) {
+            return;
+          }
+          const flushData = bufferedSnapshotRef.current;
+          bufferedSnapshotRef.current = null;
+          queryClient.setQueryData(queryKeyRef.current as QueryKey, (current: unknown) => {
+            if (!current || !flushData) return flushData;
+            const currentObj = current as { data?: Array<{ id?: string }> };
+            const flushObj = flushData as { data?: Array<{ id?: string }> };
+            if (Array.isArray(currentObj.data) && Array.isArray(flushObj.data)) {
+              const flushItems = flushObj.data;
+              const currentItems = currentObj.data;
+              const flushIds = new Set(flushItems.map((item) => item.id));
+              const newlyAdded = currentItems.filter(
+                (item) => item.id && !flushIds.has(item.id) && !item.id.startsWith("optimistic-"),
+              );
+              return {
+                ...(flushData as Record<string, unknown>),
+                data: [...newlyAdded, ...flushItems],
+              };
+            }
+            return flushData;
+          });
+        });
       }
     });
 
@@ -320,11 +346,19 @@ export function useLiveQuery<
             return;
           }
 
+          const { traceparent } = createW3CTraceparent();
+          const requestId =
+            typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+              ? crypto.randomUUID()
+              : `req-${Date.now()}`;
+
           const response = await fetch(fullUrl, {
             method: "GET",
             headers: {
               Authorization: `Bearer ${resolvedToken}`,
               Accept: "text/event-stream",
+              "X-Request-Id": requestId,
+              traceparent,
             },
             credentials: "include",
             signal,
