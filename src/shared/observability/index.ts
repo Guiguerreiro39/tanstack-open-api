@@ -100,8 +100,24 @@ export function createObservabilityService(
   }
 
   if (adapters.length === 1) {
+    activeObservabilityService = adapters[0];
     return adapters[0];
   }
 
-  return createCompositeAdapter(adapters);
+  const composite = createCompositeAdapter(adapters);
+  activeObservabilityService = composite;
+  return composite;
+}
+
+let activeObservabilityService: ObservabilityService | undefined;
+
+export function getObservabilityService(): ObservabilityService {
+  if (!activeObservabilityService) {
+    activeObservabilityService = createObservabilityService();
+  }
+  return activeObservabilityService;
+}
+
+export function setObservabilityService(service: ObservabilityService | undefined): void {
+  activeObservabilityService = service;
 }

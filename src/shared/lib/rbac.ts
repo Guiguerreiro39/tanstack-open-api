@@ -153,9 +153,10 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
   let resourceType: string | undefined;
   let ownerId: string | undefined;
   let scope: ResourceScope = "own";
+  let targetAction = action;
 
   if (typeof resource === "string") {
-    resourceType = resource;
+    resourceType = resource.replace(/s$/, "");
   } else if (resource && typeof resource === "object") {
     resourceType =
       resource.type ??
@@ -168,11 +169,19 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
     scope = resource.scope ?? "own";
   }
 
+  if (targetAction.includes(":")) {
+    const parts = targetAction.split(":");
+    if (!resourceType) {
+      resourceType = parts[0].replace(/s$/, "");
+    }
+    targetAction = parts.slice(1).join(":");
+  }
+
   // If resource has an owner and user is provided, check ownership
   if (ownerId && user?.id) {
     if (ownerId !== user.id) {
       // Non-owner requires ":any" permission on the action
-      if (!action.endsWith(":any")) {
+      if (!targetAction.endsWith(":any")) {
         return false;
       }
     }
@@ -186,20 +195,20 @@ export function hasPermission({ role, user, resource, action }: HasPermissionOpt
 
   if (resourceType && resourceType in statementsForRole) {
     const actions = (statementsForRole as Record<string, readonly string[]>)[resourceType];
-    return actions.includes(action);
+    return actions.includes(targetAction);
   }
 
   // If action contains ":any", non-admins are denied (admin is already handled above)
-  if (action.endsWith(":any")) {
+  if (targetAction.endsWith(":any")) {
     return false;
   }
 
   // Default permissions by role
   if (effectiveRole === "member") {
-    if (scope === "all" && action !== "read") {
+    if (scope === "all" && targetAction !== "read") {
       return false;
     }
-    return ["create", "read", "update", "delete", "get", "list"].includes(action);
+    return ["create", "read", "update", "delete", "get", "list"].includes(targetAction);
   }
 
   return false;

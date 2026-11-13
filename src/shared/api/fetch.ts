@@ -20,6 +20,7 @@ export class FetchError extends Error {
   readonly code?: string;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly details?: unknown;
   readonly data?: HonoErrorEnvelope;
 
   constructor(options: {
@@ -28,6 +29,7 @@ export class FetchError extends Error {
     code?: string;
     requestId?: string;
     traceId?: string;
+    details?: unknown;
     data?: HonoErrorEnvelope;
   }) {
     super(options.message);
@@ -36,6 +38,7 @@ export class FetchError extends Error {
     this.code = options.code;
     this.requestId = options.requestId;
     this.traceId = options.traceId;
+    this.details = options.details;
     this.data = options.data;
   }
 }
@@ -113,12 +116,21 @@ export async function customFetch<T>(url: string, options: RequestInit = {}): Pr
       message,
       requestId,
       traceId,
+      details: errorData?.error?.details,
       data: errorData,
     });
   }
 
   if (response.status === 204) {
     return undefined as unknown as T;
+  }
+
+  const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+  if (
+    contentType.includes("application/octet-stream") ||
+    (!contentType.includes("json") && !contentType.startsWith("text/"))
+  ) {
+    return (await response.blob()) as unknown as T;
   }
 
   return response.json() as Promise<T>;

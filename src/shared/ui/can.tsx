@@ -31,15 +31,18 @@ export function Can({
   children,
 }: CanProps) {
   const queryClient = useQueryClient();
+  const cachedSession = queryClient.getQueryData<AuthSessionData>(["auth", "session"]);
   const { data: sessionData } = useQuery<AuthSessionData | null>({
     queryKey: ["auth", "session"],
     enabled: directUser === undefined,
+    initialData: () => cachedSession ?? null,
     staleTime: Number.POSITIVE_INFINITY,
     queryFn: () =>
       (queryClient.getQueryData(["auth", "session"]) as AuthSessionData | null) ?? null,
   });
 
-  const currentUser = directUser !== undefined ? directUser : (sessionData?.user ?? null);
+  const currentUser =
+    directUser !== undefined ? directUser : (sessionData?.user ?? cachedSession?.user ?? null);
 
   if (role && !hasRole(currentUser, role)) {
     return <>{fallback}</>;
