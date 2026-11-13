@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Data, Effect, Schema } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { FetchError } from "@/shared/api/fetch";
 import type { ObservabilityService } from "@/shared/observability";
@@ -245,13 +245,23 @@ describe("Contracts & Error Taxonomy", () => {
   });
 
   describe("matchEffect", () => {
-    const dummyQuery = (overrides: Record<string, unknown> = {}) => ({
-      data: undefined,
+    const dummyQuery = <E = never, T = { name: string }>(
+      overrides: Partial<{
+        data: T;
+        error: unknown;
+        isPending: boolean;
+        isLoading: boolean;
+        isIdle: boolean;
+        isRefetching: boolean;
+        toEffect: () => Effect.Effect<T, E>;
+      }> = {},
+    ) => ({
+      data: undefined as T | undefined,
       error: null,
       isPending: false,
       isLoading: false,
       isRefetching: false,
-      toEffect: () => Effect.succeed({ name: "Clean code" }),
+      toEffect: () => Effect.succeed({ name: "Clean code" }) as unknown as Effect.Effect<T, E>,
       ...overrides,
     });
 
@@ -402,6 +412,314 @@ describe("Contracts & Error Taxonomy", () => {
           level: "warning",
         }),
       );
+    });
+
+    it("dispatches to onTag handler when tagged error matches instead of onFailure", () => {
+      const forbidden = new ForbiddenError({
+        status: 403,
+        code: "FORBIDDEN",
+        message: "You cannot view this resource",
+        requestId: "req-403",
+      });
+      const query = dummyQuery({
+        isPending: false,
+        toEffect: () => Effect.fail(forbidden),
+      });
+
+      const onFailure = vi.fn(() => "FAILURE");
+      const onForbidden = vi.fn((err: ForbiddenError) => `FORBIDDEN: ${err.message}`);
+
+      const result = matchEffect(query, {
+        onPending: () => "PENDING",
+        onSuccess: () => "SUCCESS",
+        onTag: {
+          ForbiddenError: onForbidden,
+        },
+        onFailure,
+      });
+
+      expect(result).toBe("FORBIDDEN: You cannot view this resource");
+      expect(onForbidden).toHaveBeenCalledWith(forbidden);
+      expect(onFailure).not.toHaveBeenCalled();
+    });
+
+    it("falls back to onFailure when tagged error is not matched in onTag", () => {
+      const notFound = new NotFoundError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Task 42 not found",
+        requestId: "req-404",
+      });
+      const query = dummyQuery<NotFoundError | ForbiddenError>({
+        isPending: false,
+        toEffect: () => Effect.fail(notFound),
+      });
+
+      const onFailure = vi.fn(
+        (err: NotFoundError | ForbiddenError | SchemaDecodeError) => `FALLBACK: ${err._tag}`,
+      );
+      const onForbidden = vi.fn(() => "FORBIDDEN");
+
+      const result = matchEffect(query, {
+        onPending: () => "PENDING",
+        onSuccess: () => "SUCCESS",
+        onTag: {
+          ForbiddenError: onForbidden,
+        },
+        onFailure,
+      });
+
+      expect(result).toBe("FALLBACK: NotFoundError");
+      expect(onFailure).toHaveBeenCalledWith(notFound);
+      expect(onForbidden).not.toHaveBeenCalled();
+    });
+
+    it("falls back to onFailure when error is untagged or arbitrary Error", () => {
+      const rawError = new Error("Transport socket hang up");
+      const query = dummyQuery<Error>({
+        isPending: false,
+        toEffect: () => Effect.fail(rawError),
+      });
+
+      const onFailure = vi.fn(
+        (err: Error | SchemaDecodeError) =>
+          `FALLBACK: ${err instanceof Error ? err.message : "unknown"}`,
+      );
+      const onForbidden = vi.fn(() => "FORBIDDEN");
+
+      const result = matchEffect(query, {
+        onPending: () => "PENDING",
+        onSuccess: () => "SUCCESS",
+        onTag: {
+          SchemaDecodeError: onForbidden,
+        },
+        onFailure,
+      });
+
+      expect(result).toBe("FALLBACK: Transport socket hang up");
+      expect(onFailure).toHaveBeenCalledWith(rawError);
+    });
+
+    it("supports onTag for SchemaDecodeError and invokes tag handler", () => {
+      const decodeErr = new SchemaDecodeError({
+        path: "/api/v1/tasks",
+        cause: "Expected string, got number",
+      });
+      const query = dummyQuery<SchemaDecodeError>({
+        isPending: false,
+        toEffect: () => Effect.fail(decodeErr),
+      });
+
+      const onDecode = vi.fn((err: SchemaDecodeError) => `SCHEMA_DRIFT: ${err.path}`);
+      const onFailure = vi.fn(() => "FAILURE");
+
+      const result = matchEffect(query, {
+        onPending: () => "PENDING",
+        onSuccess: () => "SUCCESS",
+        onTag: {
+          SchemaDecodeError: onDecode,
+        },
+        onFailure,
+      });
+
+      expect(result).toBe("SCHEMA_DRIFT: /api/v1/tasks");
+      expect(onDecode).toHaveBeenCalledWith(decodeErr);
+      expect(onFailure).not.toHaveBeenCalled();
+    });
+
+    it("dispatches to onTag when provided via MatchEffectOptions and allows handlers.onTag override", () => {
+      const badReq = new BadRequestError({
+        status: 400,
+        code: "BAD_REQUEST",
+        message: "Invalid query parameter",
+        requestId: "req-opts",
+      });
+      const query = dummyQuery<BadRequestError>({
+        isPending: false,
+        toEffect: () => Effect.fail(badReq),
+      });
+
+      const onOptsBadRequest = (err: BadRequestError) => `OPTS: ${err.code}`;
+      const onHandlerBadRequest = (err: BadRequestError) => `HANDLER: ${err.code}`;
+
+      // 1. When passed via options:
+      const resultFromOpts = matchEffect(
+        query,
+        {
+          onPending: () => "PENDING",
+          onSuccess: () => "SUCCESS",
+          onFailure: () => "FAILURE",
+        },
+        {
+          onTag: {
+            BadRequestError: onOptsBadRequest,
+          },
+        },
+      );
+      expect(resultFromOpts).toBe("OPTS: BAD_REQUEST");
+
+      // 2. handlers.onTag overrides options.onTag:
+      const resultOverridden = matchEffect(
+        query,
+        {
+          onPending: () => "PENDING",
+          onSuccess: () => "SUCCESS",
+          onTag: {
+            BadRequestError: onHandlerBadRequest,
+          },
+          onFailure: () => "FAILURE",
+        },
+        {
+          onTag: {
+            BadRequestError: onOptsBadRequest,
+          },
+        },
+      );
+      expect(resultOverridden).toBe("HANDLER: BAD_REQUEST");
+    });
+
+    it("records observability breadcrumb/defect before invoking onTag handler", () => {
+      const order: string[] = [];
+      const recordBreadcrumb = vi.fn(() => {
+        order.push("observability");
+      });
+      const obs: ObservabilityService = {
+        captureDefect: vi.fn(),
+        captureReactError: vi.fn(),
+        recordBreadcrumb,
+        setUserContext: vi.fn(),
+        clearUserContext: vi.fn(),
+      };
+
+      const badReq = new BadRequestError({
+        status: 400,
+        code: "BAD_REQUEST",
+        message: "Validation failure",
+        requestId: "req-obs-order",
+      });
+      const query = dummyQuery<BadRequestError>({
+        isPending: false,
+        toEffect: () => Effect.fail(badReq),
+      });
+
+      const onTagHandler = vi.fn((err: BadRequestError) => {
+        order.push(`onTag:${err.code}`);
+        return "HANDLED_TAG";
+      });
+
+      const result = matchEffect(
+        query,
+        {
+          onPending: () => "PENDING",
+          onSuccess: () => "SUCCESS",
+          onTag: {
+            BadRequestError: onTagHandler,
+          },
+          onFailure: () => "FAILURE",
+        },
+        { observability: obs },
+      );
+
+      expect(result).toBe("HANDLED_TAG");
+      expect(order).toEqual(["observability", "onTag:BAD_REQUEST"]);
+      expect(recordBreadcrumb).toHaveBeenCalledTimes(1);
+    });
+
+    it("maintains non-crashing behavior when query is isPending, isIdle, or refetching with onTag configured", () => {
+      const onTag = {
+        ForbiddenError: vi.fn(() => "FORBIDDEN"),
+      };
+
+      // isPending
+      const pendingQuery = dummyQuery<ForbiddenError>({
+        isPending: true,
+        toEffect: () =>
+          Effect.fail(
+            new ForbiddenError({ status: 403, code: "403", message: "Denied", requestId: "r" }),
+          ),
+      });
+      expect(
+        matchEffect(pendingQuery, {
+          onPending: () => "PENDING",
+          onSuccess: () => "SUCCESS",
+          onTag,
+          onFailure: () => "FAILURE",
+        }),
+      ).toBe("PENDING");
+
+      // isIdle
+      const idleQuery = dummyQuery<ForbiddenError>({
+        isPending: false,
+        isIdle: true,
+        toEffect: () => Effect.never,
+      });
+      expect(
+        matchEffect(idleQuery, {
+          onPending: () => "PENDING",
+          onSuccess: () => "SUCCESS",
+          onTag,
+          onFailure: () => "FAILURE",
+        }),
+      ).toBe("PENDING");
+
+      // isRefetching with showPendingOnRefetch: true
+      const refetchQuery = dummyQuery<ForbiddenError>({
+        isPending: false,
+        isRefetching: true,
+        toEffect: () => Effect.succeed({ name: "Refetched" }),
+      });
+      expect(
+        matchEffect(
+          refetchQuery,
+          {
+            onPending: () => "PENDING",
+            onSuccess: () => "SUCCESS",
+            onTag,
+            onFailure: () => "FAILURE",
+          },
+          { showPendingOnRefetch: true },
+        ),
+      ).toBe("PENDING");
+
+      expect(onTag.ForbiddenError).not.toHaveBeenCalled();
+    });
+
+    it("discriminates realistic custom Data.TaggedError classes with full inference", () => {
+      class TaskNotFoundError extends Data.TaggedError("TaskNotFoundError")<{
+        readonly taskId: string;
+      }> {}
+
+      class ProjectLockedError extends Data.TaggedError("ProjectLockedError")<{
+        readonly projectId: string;
+        readonly lockedBy: string;
+      }> {}
+
+      type CustomErrors = TaskNotFoundError | ProjectLockedError;
+
+      const lockedError = new ProjectLockedError({
+        projectId: "proj-101",
+        lockedBy: "alice",
+      });
+
+      const query = dummyQuery<CustomErrors>({
+        isPending: false,
+        toEffect: () => Effect.fail(lockedError),
+      });
+
+      const onLocked = (err: ProjectLockedError) => `LOCKED:${err.projectId}:${err.lockedBy}`;
+      const onNotFound = (err: TaskNotFoundError) => `NOT_FOUND:${err.taskId}`;
+
+      const result = matchEffect(query, {
+        onPending: () => "PENDING",
+        onSuccess: () => "SUCCESS",
+        onTag: {
+          ProjectLockedError: onLocked,
+          TaskNotFoundError: onNotFound,
+        },
+        onFailure: (err) => `FAILED:${err._tag}`,
+      });
+
+      expect(result).toBe("LOCKED:proj-101:alice");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockEventSource } from "@/test/mock-event-source";
@@ -70,5 +70,88 @@ describe("Tasks Route (_app/tasks)", () => {
       expect(router.state.location.pathname).toBe("/login");
     });
     expect(router.state.location.search).toEqual({ redirect: "/tasks" });
+  });
+
+  it("renders TasksPage with error fallback via matchEffect on 403 Forbidden", async () => {
+    const testUser = {
+      id: "u-member-123",
+      name: "Task Tester",
+      email: "tester@example.com",
+      role: "member" as const,
+    };
+    mockAuthSession(testUser);
+
+    server.use(
+      http.get("/api/v1/tasks", () => {
+        return HttpResponse.json(
+          {
+            error: {
+              code: "FORBIDDEN",
+              message: "Insufficient permissions",
+              requestId: "req-forbidden",
+            },
+          },
+          { status: 403 },
+        );
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/tasks"],
+      user: testUser,
+    });
+
+    expect(await screen.findByText(/access denied/i)).toBeInTheDocument();
+  });
+
+  it("renders TasksPage with stream error notice banner when streamError is present and data exists", async () => {
+    const testUser = {
+      id: "u-member-123",
+      name: "Task Tester",
+      email: "tester@example.com",
+      role: "member" as const,
+    };
+    mockAuthSession(testUser);
+
+    server.use(
+      http.get("/api/v1/tasks", () => {
+        return HttpResponse.json({
+          data: [
+            {
+              id: "t1",
+              name: "Loaded task",
+              done: false,
+              userId: "u-member-123",
+              createdAt: "",
+              updatedAt: "",
+            },
+          ],
+          meta: { nextCursor: null, hasMore: false },
+        });
+      }),
+    );
+
+    await renderAppRoutes({
+      initialEntries: ["/tasks"],
+      user: testUser,
+    });
+
+    expect(await screen.findByText("Loaded task")).toBeInTheDocument();
+
+    const instance = MockEventSource.instances.get("/api/v1/tasks/live");
+    act(() => {
+      instance?.emit("error", {
+        data: JSON.stringify({
+          error: {
+            code: "BAD_REQUEST",
+            message: "Stream connection interrupted",
+            requestId: "req-live-err",
+          },
+        }),
+      });
+    });
+
+    expect(screen.getByText("Loaded task")).toBeInTheDocument();
+    expect(await screen.findByText(/Stream connection interrupted/i)).toBeInTheDocument();
   });
 });

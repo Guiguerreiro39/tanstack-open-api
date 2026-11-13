@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Schema } from "effect";
-import { defineContract, type UseEffectQueryResult, useEffectQuery } from "@/shared/api/contracts";
+import { defineContract, useEffectMutation, useEffectQuery } from "@/shared/api/contracts";
 import {
   deleteApiV1TasksId,
   getGetApiV1TasksLiveUrl,
@@ -20,7 +20,7 @@ import {
   PatchApiV1TasksId200Response,
   PostApiV1Tasks201Response,
 } from "@/shared/api/generated/schemas";
-import { type UseLiveQueryResult, useLiveQuery } from "@/shared/lib/hooks/use-live-query";
+import { useLiveQuery } from "@/shared/lib/hooks/use-live-query";
 
 export const listTasksContract = defineContract({
   operation: "GetApiV1Tasks",
@@ -48,15 +48,11 @@ export const deleteTaskContract = defineContract({
 
 export type TaskListResponse = Schema.Schema.Type<typeof GetApiV1Tasks200Response>;
 
-export function useTasksQuery(
-  params?: GetApiV1TasksParams,
-): UseEffectQueryResult<TaskListResponse, unknown> {
+export function useTasksQuery(params?: GetApiV1TasksParams) {
   return useEffectQuery(getGetApiV1TasksQueryOptions(params), listTasksContract);
 }
 
-export function useTaskLiveQuery(
-  params?: GetApiV1TasksParams,
-): UseLiveQueryResult<TaskListResponse, unknown> {
+export function useTaskLiveQuery(params?: GetApiV1TasksParams) {
   return useLiveQuery({
     queryOptions: getGetApiV1TasksQueryOptions(params),
     descriptor: listTasksContract,
@@ -68,133 +64,152 @@ export function useTaskLiveQuery(
 export function useTaskMutation(params?: GetApiV1TasksParams) {
   const queryClient = useQueryClient();
 
-  const createMutation = useMutation({
-    mutationKey: ["tasks", "mutation", "create"],
-    mutationFn: (data: PostApiV1TasksBody) => postApiV1Tasks(data),
-    onMutate: async (newBody) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/v1/tasks"] });
-      await queryClient.cancelQueries({ queryKey: getGetApiV1TasksQueryKey(params) });
+  const createMutation = useEffectMutation(
+    {
+      mutationKey: ["tasks", "mutation", "create"],
+      mutationFn: (data: PostApiV1TasksBody) => postApiV1Tasks(data),
+      onMutate: async (newBody) => {
+        await queryClient.cancelQueries({ queryKey: ["/api/v1/tasks"] });
+        await queryClient.cancelQueries({ queryKey: getGetApiV1TasksQueryKey(params) });
 
-      const previousQueries = queryClient.getQueriesData<GetApiV1Tasks200>({
-        queryKey: ["/api/v1/tasks"],
-      });
+        const previousQueries = queryClient.getQueriesData<GetApiV1Tasks200>({
+          queryKey: ["/api/v1/tasks"],
+        });
 
-      const sessionData = queryClient.getQueryData<{ user?: { id?: string } }>(["auth", "session"]);
-      const currentUserId = sessionData?.user?.id ?? "local-user";
+        const sessionData = queryClient.getQueryData<{ user?: { id?: string } }>([
+          "auth",
+          "session",
+        ]);
+        const currentUserId = sessionData?.user?.id ?? "local-user";
 
-      const optimisticTask = {
-        id: `optimistic-${crypto.randomUUID()}`,
-        name: newBody.name,
-        done: Boolean(newBody.done),
-        userId: currentUserId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
-        if (!old) {
-          return {
-            data: [optimisticTask],
-            meta: { nextCursor: null, hasMore: false },
-          };
-        }
-        return {
-          ...old,
-          data: [optimisticTask, ...old.data],
+        const optimisticTask = {
+          id: `optimistic-${crypto.randomUUID()}`,
+          name: newBody.name,
+          done: Boolean(newBody.done),
+          userId: currentUserId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
-      });
 
-      return { previousQueries, optimisticId: optimisticTask.id };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousQueries) {
-        for (const [qKey, data] of context.previousQueries) {
-          queryClient.setQueryData(qKey, data);
+        queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
+          if (!old) {
+            return {
+              data: [optimisticTask],
+              meta: { nextCursor: null, hasMore: false },
+            };
+          }
+          return {
+            ...old,
+            data: [optimisticTask, ...old.data],
+          };
+        });
+
+        return { previousQueries, optimisticId: optimisticTask.id };
+      },
+      onError: (_err, _variables, context) => {
+        if (context?.previousQueries) {
+          for (const [qKey, data] of context.previousQueries) {
+            queryClient.setQueryData(qKey, data);
+          }
         }
-      }
+      },
+      onSuccess: (serverTask: PostApiV1Tasks201, _variables, context) => {
+        if (context?.optimisticId) {
+          queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              data: old.data.map((item) =>
+                item.id === context.optimisticId
+                  ? { ...serverTask, id: serverTask.id ?? context.optimisticId }
+                  : item,
+              ),
+            };
+          });
+        }
+      },
     },
-    onSuccess: (serverTask: PostApiV1Tasks201, _variables, context) => {
-      if (context?.optimisticId) {
+    createTaskContract,
+  );
+
+  const toggleMutation = useEffectMutation(
+    {
+      mutationKey: ["tasks", "mutation", "toggle"],
+      mutationFn: ({ id, done }: { id: string; done: boolean }) => patchApiV1TasksId(id, { done }),
+      onMutate: async ({ id, done }) => {
+        await queryClient.cancelQueries({ queryKey: ["/api/v1/tasks"] });
+
+        const previousQueries = queryClient.getQueriesData<GetApiV1Tasks200>({
+          queryKey: ["/api/v1/tasks"],
+        });
+
         queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
           if (!old) return old;
           return {
             ...old,
-            data: old.data.map((item) => (item.id === context.optimisticId ? serverTask : item)),
+            data: old.data.map((item) =>
+              item.id === id ? { ...item, done, updatedAt: new Date().toISOString() } : item,
+            ),
           };
         });
-      }
-    },
-  });
 
-  const toggleMutation = useMutation({
-    mutationKey: ["tasks", "mutation", "toggle"],
-    mutationFn: ({ id, done }: { id: string; done: boolean }) => patchApiV1TasksId(id, { done }),
-    onMutate: async ({ id, done }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/v1/tasks"] });
-
-      const previousQueries = queryClient.getQueriesData<GetApiV1Tasks200>({
-        queryKey: ["/api/v1/tasks"],
-      });
-
-      queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          data: old.data.map((item) =>
-            item.id === id ? { ...item, done, updatedAt: new Date().toISOString() } : item,
-          ),
-        };
-      });
-
-      return { previousQueries };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousQueries) {
-        for (const [qKey, data] of context.previousQueries) {
-          queryClient.setQueryData(qKey, data);
+        return { previousQueries };
+      },
+      onError: (_err, _variables, context) => {
+        if (context?.previousQueries) {
+          for (const [qKey, data] of context.previousQueries) {
+            queryClient.setQueryData(qKey, data);
+          }
         }
-      }
+      },
     },
-  });
+    updateTaskContract,
+  );
 
-  const deleteMutation = useMutation({
-    mutationKey: ["tasks", "mutation", "delete"],
-    mutationFn: ({ id }: { id: string }) => deleteApiV1TasksId(id),
-    onMutate: async ({ id }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/v1/tasks"] });
+  const deleteMutation = useEffectMutation(
+    {
+      mutationKey: ["tasks", "mutation", "delete"],
+      mutationFn: ({ id }: { id: string }) => deleteApiV1TasksId(id),
+      onMutate: async ({ id }) => {
+        await queryClient.cancelQueries({ queryKey: ["/api/v1/tasks"] });
 
-      const previousQueries = queryClient.getQueriesData<GetApiV1Tasks200>({
-        queryKey: ["/api/v1/tasks"],
-      });
+        const previousQueries = queryClient.getQueriesData<GetApiV1Tasks200>({
+          queryKey: ["/api/v1/tasks"],
+        });
 
-      queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          data: old.data.filter((item) => item.id !== id),
-        };
-      });
+        queryClient.setQueriesData<GetApiV1Tasks200>({ queryKey: ["/api/v1/tasks"] }, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.filter((item) => item.id !== id),
+          };
+        });
 
-      return { previousQueries };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousQueries) {
-        for (const [qKey, data] of context.previousQueries) {
-          queryClient.setQueryData(qKey, data);
+        return { previousQueries };
+      },
+      onError: (_err, _variables, context) => {
+        if (context?.previousQueries) {
+          for (const [qKey, data] of context.previousQueries) {
+            queryClient.setQueryData(qKey, data);
+          }
         }
-      }
+      },
     },
-  });
+    deleteTaskContract,
+  );
 
   return {
     createTask: createMutation.mutate,
     createTaskAsync: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    createMutation,
     toggleTask: toggleMutation.mutate,
     toggleTaskAsync: toggleMutation.mutateAsync,
     isToggling: toggleMutation.isPending,
+    toggleMutation,
     deleteTask: deleteMutation.mutate,
     deleteTaskAsync: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    deleteMutation,
   };
 }
