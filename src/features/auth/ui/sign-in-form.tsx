@@ -51,8 +51,7 @@ export function SignInForm({ redirectTo: _redirectTo, onSwitchToSignUp }: SignIn
 
       await invalidateAuthSession(queryClient);
       await router.invalidate();
-      // biome-ignore lint/suspicious/noExplicitAny: Redirect to home page
-      await navigate({ to: "/" as any });
+      await navigate({ to: "/" });
     },
   });
 
