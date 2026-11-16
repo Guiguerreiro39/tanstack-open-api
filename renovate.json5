@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":separateMultipleMajorReleases"
+  ],
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "timezone": "UTC",
+  "schedule": ["before 4am on monday"],
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "description": "Group TanStack ecosystem dependencies",
+      "matchPackagePatterns": ["^@tanstack/"],
+      "groupName": "tanstack monorepo"
+    },
+    {
+      "description": "Group React 19 ecosystem dependencies",
+      "matchPackagePatterns": ["^react", "^react-dom", "^@types/react"],
+      "groupName": "react ecosystem"
+    },
+    {
+      "description": "Group Effect ecosystem dependencies",
+      "matchPackagePatterns": ["^effect", "^@effect/"],
+      "groupName": "effect ecosystem"
+    },
+    {
+      "description": "Group Radix UI dependencies",
+      "matchPackagePatterns": ["^@radix-ui/"],
+      "groupName": "radix ui primitives"
+    },
+    {
+      "description": "Group Biome and code quality tooling",
+      "matchPackagePatterns": ["^@biomejs/", "lefthook", "commitlint"],
+      "groupName": "lint and formatting tools"
+    },
+    {
+      "description": "Automerge minor and patch updates for devDependencies if CI passes",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "branch"
+    }
+  ]
+}

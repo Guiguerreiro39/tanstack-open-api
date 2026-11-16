@@ -378,4 +378,104 @@ describe("Container Runtime & CI/CD Configurations", () => {
       expect(content).toContain("push-to-registry: true");
     });
   });
+
+  describe("GitHub Repository Ruleset & Provisioning Script", () => {
+    const rulesetPath = resolve(rootDir, "docs/github-ruleset.json");
+    const scriptPath = resolve(rootDir, "scripts/setup-github-rulesets.sh");
+    const pkgJsonPath = resolve(rootDir, "package.json");
+    const ciPath = resolve(rootDir, ".github/workflows/ci.yml");
+    const prTitlePath = resolve(rootDir, ".github/workflows/pr-title.yml");
+
+    it("docs/github-ruleset.json exists, targets ~DEFAULT_BRANCH, defines protection rules, and allows admin bypass", () => {
+      expect(existsSync(rulesetPath)).toBe(true);
+
+      const ruleset = JSON.parse(readFileSync(rulesetPath, "utf8"));
+      expect(ruleset.target).toBe("branch");
+      expect(ruleset.enforcement).toBe("active");
+      expect(ruleset.conditions?.ref_name?.include).toContain("~DEFAULT_BRANCH");
+
+      const rules = ruleset.rules as Array<{ type: string; parameters?: Record<string, unknown> }>;
+      const ruleTypes = rules.map((r) => r.type);
+      expect(ruleTypes).toContain("deletion");
+      expect(ruleTypes).toContain("non_fast_forward");
+      expect(ruleTypes).toContain("pull_request");
+      expect(ruleTypes).toContain("required_status_checks");
+
+      const prRule = rules.find((r) => r.type === "pull_request");
+      expect(prRule?.parameters?.required_review_thread_resolution).toBe(true);
+      expect(prRule?.parameters?.required_approving_review_count).toBe(0);
+
+      const statusChecksRule = rules.find((r) => r.type === "required_status_checks");
+      expect(statusChecksRule?.parameters?.strict_required_status_checks_policy).toBe(true);
+
+      const rawChecks = (statusChecksRule?.parameters?.required_status_checks ?? []) as Array<{
+        context: string;
+      }>;
+      const requiredChecks = rawChecks.map((c) => c.context);
+      expect(requiredChecks).toContain("verify");
+      expect(requiredChecks).toContain("docker");
+      expect(requiredChecks).toContain("Lint PR Title (Conventional Commits)");
+
+      // Verify that the status checks match actual CI workflow job names
+      const ciContent = readFileSync(ciPath, "utf8");
+      expect(ciContent).toContain("verify:");
+      expect(ciContent).toContain("docker:");
+
+      const prTitleContent = readFileSync(prTitlePath, "utf8");
+      expect(prTitleContent).toContain("Lint PR Title (Conventional Commits)");
+
+      // Verify Repository Admin bypass (actor_id 5)
+      const bypassActors = ruleset.bypass_actors as Array<{
+        actor_id: number;
+        actor_type: string;
+        bypass_mode: string;
+      }>;
+      expect(
+        bypassActors.some(
+          (a) =>
+            a.actor_id === 5 && a.actor_type === "RepositoryRole" && a.bypass_mode === "always",
+        ),
+      ).toBe(true);
+    });
+
+    it("scripts/setup-github-rulesets.sh exists, is executable, succeeds in --dry-run, and is wired in package.json", () => {
+      expect(existsSync(scriptPath)).toBe(true);
+
+      const dryRunResult = spawnSync("bash", [scriptPath, "--dry-run"], {
+        encoding: "utf8",
+      });
+      expect(dryRunResult.status).toBe(0);
+      expect(dryRunResult.stdout).toContain("[Dry Run]");
+      expect(dryRunResult.stdout).toContain("docs/github-ruleset.json");
+
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+      expect(pkgJson.scripts?.["setup:ruleset"]).toBe("bash scripts/setup-github-rulesets.sh");
+    });
+  });
+
+  describe("Renovate configuration", () => {
+    const renovatePath = resolve(rootDir, "renovate.json5");
+
+    it("renovate.json5 exists and configures semantic commits, ecosystem grouping, and devDependencies automerge", () => {
+      expect(existsSync(renovatePath)).toBe(true);
+
+      const content = readFileSync(renovatePath, "utf8");
+      expect(content).toContain("config:recommended");
+      expect(content).toContain(":semanticCommits");
+      expect(content).toContain(":separateMultipleMajorReleases");
+      expect(content).toContain('"semanticCommitType": "chore"');
+      expect(content).toContain('"semanticCommitScope": "deps"');
+
+      // Ecosystem groups
+      expect(content).toContain("tanstack monorepo");
+      expect(content).toContain("react ecosystem");
+      expect(content).toContain("effect ecosystem");
+      expect(content).toContain("radix ui primitives");
+      expect(content).toContain("lint and formatting tools");
+
+      // Automerge devDependencies
+      expect(content).toContain('"automerge": true');
+      expect(content).toContain('"devDependencies"');
+    });
+  });
 });

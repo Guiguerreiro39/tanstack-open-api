@@ -20,6 +20,7 @@
     "test:coverage": "vitest run --project unit --coverage",
     "generate:api": "orval",
     "sync:api": "curl -fsS http://localhost:9999/doc > ./openapi.json && orval",
+    "setup:ruleset": "bash scripts/setup-github-rulesets.sh",
     "prepare": "effect-language-service patch && lefthook install"
   },
   "dependencies": {
