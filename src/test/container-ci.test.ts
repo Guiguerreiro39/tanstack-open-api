@@ -265,4 +265,117 @@ describe("Container Runtime & CI/CD Configurations", () => {
       expect(content).toMatch(/subjectPattern:\s*\^\(\?!\[A-Z\]\)\.\+\$/);
     });
   });
+
+  describe("Release-Please configuration & manifests", () => {
+    const configPath = resolve(rootDir, "release-please-config.json");
+    const manifestPath = resolve(rootDir, ".release-please-manifest.json");
+    const pkgJsonPath = resolve(rootDir, "package.json");
+
+    it("release-please-config.json exists, parses, and configures node release with changelog sections", () => {
+      expect(existsSync(configPath)).toBe(true);
+
+      const config = JSON.parse(readFileSync(configPath, "utf8"));
+      expect(config.packages).toBeDefined();
+      expect(config.packages["."]).toBeDefined();
+
+      const rootPkg = config.packages["."];
+      expect(rootPkg["release-type"]).toBe("node");
+      expect(rootPkg["changelog-path"]).toBe("CHANGELOG.md");
+      expect(rootPkg["bump-minor-pre-major"]).toBe(true);
+      expect(rootPkg["bump-patch-for-minor-pre-major"]).toBe(true);
+      expect(rootPkg["include-component-in-tag"]).toBe(false);
+
+      const sections = rootPkg["changelog-sections"] as Array<{
+        type: string;
+        section: string;
+        hidden?: boolean;
+      }>;
+      expect(Array.isArray(sections)).toBe(true);
+
+      const sectionTypes = sections.map((s) => s.type);
+      expect(sectionTypes).toContain("feat");
+      expect(sectionTypes).toContain("fix");
+      expect(sectionTypes).toContain("perf");
+      expect(sectionTypes).toContain("refactor");
+      expect(sectionTypes).toContain("docs");
+      expect(sectionTypes).toContain("build");
+      expect(sectionTypes).toContain("ci");
+      expect(sectionTypes).toContain("chore");
+
+      const choreSection = sections.find((s) => s.type === "chore");
+      expect(choreSection?.hidden).toBe(true);
+    });
+
+    it(".release-please-manifest.json exists and its root version matches package.json#version", () => {
+      expect(existsSync(manifestPath)).toBe(true);
+
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+
+      expect(manifest["."]).toBeDefined();
+      expect(manifest["."]).toBe(pkgJson.version);
+    });
+  });
+
+  describe(".github/workflows/release.yml", () => {
+    const releaseWorkflowPath = resolve(rootDir, ".github/workflows/release.yml");
+
+    it("exists and configures Release-Please, multi-arch GHCR publishing, and SLSA attestations", () => {
+      expect(existsSync(releaseWorkflowPath)).toBe(true);
+
+      const content = readFileSync(releaseWorkflowPath, "utf8");
+
+      // Push triggers on main and master
+      expect(content).toContain("push:");
+      expect(content).toContain("main");
+      expect(content).toContain("master");
+
+      // Cancel in progress is false
+      expect(content).toContain("cancel-in-progress: false");
+
+      // Security permissions
+      expect(content).toContain("contents: write");
+      expect(content).toContain("pull-requests: write");
+      expect(content).toContain("packages: write");
+      expect(content).toContain("id-token: write");
+      expect(content).toContain("attestations: write");
+
+      // Release job
+      expect(content).toContain("release:");
+      expect(content).toContain("googleapis/release-please-action@v4");
+      expect(content).toContain("config-file: release-please-config.json");
+      expect(content).toContain("manifest-file: .release-please-manifest.json");
+
+      // Container job gated on release_created
+      expect(content).toContain("publish-container:");
+      expect(content).toMatch(/needs\.release\.outputs\.release_created\s*==\s*'?true'?/);
+
+      // Multi-arch platforms
+      expect(content).toContain("docker/setup-qemu-action@v3");
+      expect(content).toContain("linux/amd64,linux/arm64");
+      expect(content).toContain("docker/setup-buildx-action@v3");
+
+      // Dynamic GHCR image derived from github.repository (lowercased)
+      expect(content).toContain("ghcr.io");
+      expect(content).toContain("${" + "{ github.repository }}");
+      // Must not hardcode repository name in image slug definition
+      expect(content).not.toMatch(/ghcr\.io\/[^$]+tanstack-open-api/);
+
+      // Metadata tags
+      expect(content).toContain("docker/metadata-action@v5");
+      expect(content).toContain("type=semver,pattern={{version}}");
+      expect(content).toContain("type=semver,pattern={{major}}.{{minor}}");
+      expect(content).toContain("type=raw,value=latest");
+      expect(content).toContain("type=sha,prefix=sha-");
+
+      // Docker buildx push with Actions cache
+      expect(content).toContain("docker/build-push-action@v6");
+      expect(content).toContain("cache-from: type=gha");
+      expect(content).toContain("cache-to: type=gha,mode=max");
+
+      // SLSA build provenance attestation
+      expect(content).toContain("actions/attest-build-provenance@v2");
+      expect(content).toContain("push-to-registry: true");
+    });
+  });
 });
