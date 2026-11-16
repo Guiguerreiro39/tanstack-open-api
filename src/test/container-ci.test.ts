@@ -1,5 +1,9 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import lint from "@commitlint/lint";
+import load from "@commitlint/load";
+import type { LintOptions } from "@commitlint/types";
 import { describe, expect, it } from "vitest";
 
 describe("Container Runtime & CI/CD Configurations", () => {
@@ -80,6 +84,185 @@ describe("Container Runtime & CI/CD Configurations", () => {
       expect(content).toContain("git diff --exit-code src/routeTree.gen.ts");
       expect(content).toContain("docker compose config --quiet");
       expect(content).toContain("docker build");
+    });
+  });
+
+  describe("commitlint.config.mjs", () => {
+    const configPath = resolve(rootDir, "commitlint.config.mjs");
+
+    async function lintCommitMessage(message: string) {
+      const config = await load({}, { file: "commitlint.config.mjs", cwd: rootDir });
+      return lint(message, config.rules, {
+        defaultIgnores: config.defaultIgnores,
+        ignores: config.ignores,
+        parserOpts: config.parserPreset?.parserOpts as LintOptions["parserOpts"],
+        plugins: config.plugins,
+        helpUrl: config.helpUrl,
+      });
+    }
+
+    it("accepts valid Conventional Commits (scoped, unscoped, breaking !, BREAKING CHANGE footer)", async () => {
+      expect(existsSync(configPath)).toBe(true);
+
+      const validMessages = [
+        "feat: add passkey login flow",
+        "fix(tasks): resolve optimistic mutation race condition",
+        "perf(ssr): cache compiled routes in memory runtime",
+        "refactor(api): migrate contract decoder to effect schema",
+        "docs(adr): record release pipeline architecture",
+        "style: apply biome formatting across feature slices",
+        "test(harness): introduce mock event source sse harness",
+        "build(docker): optimize multi-stage cache layers",
+        "ci(workflows): add multi-arch ghcr container publishing",
+        "chore(deps): update dependency @tanstack/react-query",
+        'revert: "feat(tasks): live query streaming"',
+        "feat(api)!: migrate endpoint response schema to envelope format",
+        "refactor(config): remove deprecated backend host variable\n\nBREAKING CHANGE: VITE_BACKEND_HOST has been removed.",
+      ];
+
+      for (const msg of validMessages) {
+        const result = await lintCommitMessage(msg);
+        expect(
+          result.valid,
+          `Expected "${msg}" to be valid, got errors: ${JSON.stringify(result.errors)}`,
+        ).toBe(true);
+      }
+    });
+
+    it("rejects invalid commit messages (missing type, unknown type, uppercase subject, header > 100 chars)", async () => {
+      expect(existsSync(configPath)).toBe(true);
+
+      const missingType = await lintCommitMessage("update tasks list");
+      expect(missingType.valid).toBe(false);
+      expect(
+        missingType.errors.some((e) => e.name === "type-empty" || e.name === "subject-empty"),
+      ).toBe(true);
+
+      const unknownType = await lintCommitMessage("wip(tasks): work in progress");
+      expect(unknownType.valid).toBe(false);
+      expect(unknownType.errors.some((e) => e.name === "type-enum")).toBe(true);
+
+      const pascalCaseSubject = await lintCommitMessage("feat(tasks): AddTaskFiltering");
+      expect(pascalCaseSubject.valid).toBe(false);
+      expect(pascalCaseSubject.errors.some((e) => e.name === "subject-case")).toBe(true);
+
+      const upperCaseSubject = await lintCommitMessage("feat(tasks): ADD TASK FILTERING");
+      expect(upperCaseSubject.valid).toBe(false);
+      expect(upperCaseSubject.errors.some((e) => e.name === "subject-case")).toBe(true);
+
+      const sentenceCaseSubject = await lintCommitMessage("feat(tasks): Add task filtering");
+      expect(sentenceCaseSubject.valid).toBe(false);
+      expect(sentenceCaseSubject.errors.some((e) => e.name === "subject-case")).toBe(true);
+
+      const overlongHeader = await lintCommitMessage(`feat(tasks): ${"a".repeat(95)}`);
+      expect(overlongHeader.valid).toBe(false);
+      expect(overlongHeader.errors.some((e) => e.name === "header-max-length")).toBe(true);
+    });
+  });
+
+  describe("lefthook.yml", () => {
+    const lefthookPath = resolve(rootDir, "lefthook.yml");
+
+    it("exists and configures pre-commit, commit-msg, and pre-push hooks", () => {
+      expect(existsSync(lefthookPath)).toBe(true);
+
+      const content = readFileSync(lefthookPath, "utf8");
+      expect(content).toContain("pre-commit:");
+      expect(content).toContain("stage_fixed: true");
+      expect(content).toMatch(/biome check --write/);
+      expect(content).toContain("commit-msg:");
+      expect(content).toMatch(/commitlint --edit/);
+      expect(content).toContain("pre-push:");
+      expect(content).toContain("scripts/check-branch-push.sh");
+    });
+
+    it("package.json chains lefthook install into prepare script", () => {
+      const packageJsonPath = resolve(rootDir, "package.json");
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+      expect(packageJson.scripts?.prepare).toContain("lefthook install");
+    });
+  });
+
+  describe("scripts/check-branch-push.sh", () => {
+    const scriptPath = resolve(rootDir, "scripts/check-branch-push.sh");
+
+    it("exists, is executable, and blocks direct pushes to main/master without bypass", () => {
+      expect(existsSync(scriptPath)).toBe(true);
+
+      // biome-ignore lint/style/noProcessEnv: subprocess testing requires env options
+      const baseEnv = process.env;
+
+      // Blocked on main branch
+      const resultMain = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "main", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultMain.status).toBe(1);
+      expect(resultMain.stderr).toContain("Direct pushes to 'main' are prohibited");
+      expect(resultMain.stderr).toContain("ALLOW_DIRECT_MAIN_PUSH=1");
+
+      // Blocked on master branch
+      const resultMaster = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "master", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultMaster.status).toBe(1);
+      expect(resultMaster.stderr).toContain("Direct pushes to 'master' are prohibited");
+
+      // Blocked when pre-push receives refs on stdin
+      const resultStdin = spawnSync("bash", [scriptPath], {
+        input: "refs/heads/feature 1111 refs/heads/main 2222\n",
+        env: { ...baseEnv, GIT_BRANCH: "feat/cool", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultStdin.status).toBe(1);
+      expect(resultStdin.stderr).toContain("Direct pushes to 'refs/heads/main' are prohibited");
+
+      // Allowed on feature branch
+      const resultFeature = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "feat/some-feature", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultFeature.status).toBe(0);
+
+      // Allowed on main when ALLOW_DIRECT_MAIN_PUSH=1
+      const resultBypass = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "main", ALLOW_DIRECT_MAIN_PUSH: "1" },
+        encoding: "utf8",
+      });
+      expect(resultBypass.status).toBe(0);
+    });
+  });
+
+  describe(".github/workflows/pr-title.yml", () => {
+    const workflowPath = resolve(rootDir, ".github/workflows/pr-title.yml");
+
+    it("exists and configures amannn/action-semantic-pull-request with 11 types", () => {
+      expect(existsSync(workflowPath)).toBe(true);
+
+      const content = readFileSync(workflowPath, "utf8");
+      expect(content).toContain("pull_request_target:");
+      expect(content).toContain("pull-requests: read");
+      expect(content).toContain("Lint PR Title (Conventional Commits)");
+      expect(content).toContain("amannn/action-semantic-pull-request@v6");
+
+      const expectedTypes = [
+        "feat",
+        "fix",
+        "perf",
+        "refactor",
+        "docs",
+        "style",
+        "test",
+        "build",
+        "ci",
+        "chore",
+        "revert",
+      ];
+      for (const type of expectedTypes) {
+        expect(content).toContain(type);
+      }
+      expect(content).toMatch(/subjectPattern:\s*\^\(\?!\[A-Z\]\)\.\+\$/);
     });
   });
 });
