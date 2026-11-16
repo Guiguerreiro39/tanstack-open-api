@@ -26,3 +26,8 @@
 
 - **Issue**: TanStack Start uses a default internal hydration script when `src/client.tsx` is missing, which silently bypasses React 19's `onUncaughtError`, `onCaughtError`, and `onRecoverableError` hooks.
 - **Remedy**: Maintain `src/client.tsx` with `hydrateRoot(document, <StartClient />, { onUncaughtError, onCaughtError, onRecoverableError })` wired to `observability.captureReactError`.
+
+### 6. Git Hooks in Containerized Environments (`lefthook install` in `prepare`)
+
+- **Issue**: Running `lefthook install` directly in `package.json#scripts.prepare` fails inside Docker builds (`node:24-slim` during `pnpm install --frozen-lockfile`) because `.git` is omitted via `.dockerignore` and the `git` binary is not installed, causing `Error: exec: "git": executable file not found in $PATH`.
+- **Remedy**: Guard `lefthook install` with `(test -d .git && lefthook install || true)` in `package.json#scripts.prepare` so hooks install automatically in local git worktrees while gracefully skipping in Docker builds and headless non-git environments.

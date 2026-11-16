@@ -21,7 +21,7 @@
     "generate:api": "orval",
     "sync:api": "curl -fsS http://localhost:9999/doc > ./openapi.json && orval",
     "setup:ruleset": "bash scripts/setup-github-rulesets.sh",
-    "prepare": "effect-language-service patch && lefthook install"
+    "prepare": "effect-language-service patch && (test -d .git && lefthook install || true)"
   },
   "dependencies": {
     "@datadog/browser-logs": "^7.17.1",
