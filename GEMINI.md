@@ -31,3 +31,8 @@
 
 - **Issue**: Running `lefthook install` directly in `package.json#scripts.prepare` fails inside Docker builds (`node:24-slim` during `pnpm install --frozen-lockfile`) because `.git` is omitted via `.dockerignore` and the `git` binary is not installed, causing `Error: exec: "git": executable file not found in $PATH`.
 - **Remedy**: Guard `lefthook install` with `(test -d .git && lefthook install || true)` in `package.json#scripts.prepare` so hooks install automatically in local git worktrees while gracefully skipping in Docker builds and headless non-git environments.
+
+### 7. Release-Please CHANGELOG.md Formatting vs. Biome
+
+- **Issue**: Google Release-Please automatically generates and updates `CHANGELOG.md` using its built-in Markdown list syntax (`* **scope:**`). Biome's default Markdown formatter flags these lines with `File content differs from formatting output`, causing the `verify` job in CI to fail on every release PR opened by Release-Please.
+- **Remedy**: Add `"!!CHANGELOG.md"` to `files.includes` in `biome.json` so Biome skips formatting and linting `CHANGELOG.md`.
