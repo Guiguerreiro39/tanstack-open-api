@@ -14,7 +14,8 @@
       "!!src/routeTree.gen.ts",
       "!!src/shared/api/generated",
       "!!openapi.json",
-      "!!tsconfig.tsbuildinfo"
+      "!!tsconfig.tsbuildinfo",
+      "!!CHANGELOG.md"
     ]
   },
   "formatter": {
