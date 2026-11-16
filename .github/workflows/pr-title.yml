@@ -38,6 +38,5 @@ jobs:
             chore
             revert
           requireScope: false
-          disallowScopes: []
           subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: "The commit subject must not start with an uppercase letter."
