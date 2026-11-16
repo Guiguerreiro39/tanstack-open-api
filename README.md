@@ -11,6 +11,7 @@ Production-ready full-stack React 19 frontend starter kit built on TanStack Star
 - **Design System**: [Tailwind CSS v4](https://tailwindcss.com) semantic tokens, [shadcn/ui](https://ui.shadcn.com) catalog, OKLCH presets, and tactile elevation.
 - **Quality & Testing**: [Biome 2](https://biomejs.dev) lint/format guardrails, [Vitest](https://vitest.dev) 4 boundary harness, and [MSW](https://mswjs.io) v2.
 - **Observability**: Pluggable `ObservabilityPort` (Sentry / Datadog) with W3C `traceparent` and `X-Request-Id` trace correlation.
+- **Release & Governance**: [Release-Please](https://github.com/googleapis/release-please) automated semver/changelog, [Lefthook](https://github.com/evilmartians/lefthook) + [Commitlint](https://commitlint.js.org) git hooks, multi-arch GHCR containers with [SLSA](https://slsa.dev) provenance, and [Renovate](https://docs.renovatebot.com) grouping.
 
 ## Quickstart
 
@@ -23,20 +24,21 @@ pnpm build         # Build production client and server bundles
 
 ## Project Scripts
 
-| Script          | Command                                | Purpose                                                                |
-| :-------------- | :------------------------------------- | :--------------------------------------------------------------------- |
-| `dev`           | `vite dev`                             | Start development server with HMR                                      |
-| `build`         | `vite build`                           | Build production client (`dist/client`) and SSR server (`dist/server`) |
-| `start`         | `node server.mjs`                      | Run Node 24 production server with static serving & reverse proxy      |
-| `serve`         | `vite preview`                         | Preview production build locally via Vite                              |
-| `typecheck`     | `tsc --noEmit`                         | Check TypeScript types without emitting artifacts                      |
-| `lint`          | `biome check .`                        | Verify code style, imports, and accessibility rules                    |
-| `lint:fix`      | `biome check --write .`                | Apply safe auto-fixes for formatting and import sorting                |
-| `test`          | `vitest run --project unit`            | Execute unit, contract, and boundary test suites                       |
-| `test:watch`    | `vitest --project unit`                | Run Vitest in interactive watch mode                                   |
-| `test:coverage` | `vitest run --project unit --coverage` | Generate test coverage report via `@vitest/coverage-v8`                |
-| `generate:api`  | `orval`                                | Regenerate API contracts and Effect schemas from `openapi.json`        |
-| `sync:api`      | `curl ... && orval`                    | Fetch OpenAPI spec from running `hono-open-api` and regenerate         |
+| Script          | Command                                 | Purpose                                                                |
+| :-------------- | :-------------------------------------- | :--------------------------------------------------------------------- |
+| `dev`           | `vite dev`                              | Start development server with HMR                                      |
+| `build`         | `vite build`                            | Build production client (`dist/client`) and SSR server (`dist/server`) |
+| `start`         | `node server.mjs`                       | Run Node 24 production server with static serving & reverse proxy      |
+| `serve`         | `vite preview`                          | Preview production build locally via Vite                              |
+| `typecheck`     | `tsc --noEmit`                          | Check TypeScript types without emitting artifacts                      |
+| `lint`          | `biome check .`                         | Verify code style, imports, and accessibility rules                    |
+| `lint:fix`      | `biome check --write .`                 | Apply safe auto-fixes for formatting and import sorting                |
+| `test`          | `vitest run --project unit`             | Execute unit, contract, and boundary test suites                       |
+| `test:watch`    | `vitest --project unit`                 | Run Vitest in interactive watch mode                                   |
+| `test:coverage` | `vitest run --project unit --coverage`  | Generate test coverage report via `@vitest/coverage-v8`                |
+| `generate:api`  | `orval`                                 | Regenerate API contracts and Effect schemas from `openapi.json`        |
+| `sync:api`      | `curl ... && orval`                     | Fetch OpenAPI spec from running `hono-open-api` and regenerate         |
+| `setup:ruleset` | `bash scripts/setup-github-rulesets.sh` | Idempotently provision GitHub Repository Rulesets via `gh api`         |
 
 ## Route & Feature Slice Architecture
 
@@ -59,5 +61,5 @@ src/routes/
 - [Development & Playbooks](docs/development.md): 3 dev modes, 4 onboarding playbooks, 7-step scaffolding, and env vars.
 - [Design System & Tokens](DESIGN.md): Semantic OKLCH tokens, tactile elevation, and typography.
 - [Domain Glossary](GLOSSARY.md): Ubiquitous language and domain definitions.
-- [Architecture Decision Records](docs/adr/): Accepted ADRs (`ADR-0001` through `ADR-0009`).
+- [Architecture Decision Records](docs/adr/): Accepted ADRs (`ADR-0001` through `ADR-0010`).
 - [Runtime Verification](.agents/skills/verify-tanstack-open-api/SKILL.md): Automated verification skill and feature flows.

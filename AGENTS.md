@@ -40,11 +40,13 @@ Single-context layout (`GLOSSARY.md` + `docs/adr/` at repo root). See `docs/agen
 
 - **Verification gates.** Before reporting done, pass `pnpm generate:api && git diff --exit-code`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` (checking `git diff --exit-code src/routeTree.gen.ts`), and execute `.agents/skills/verify-tanstack-open-api/SKILL.md` whenever routes, UI workflows, or runtime contracts change.
 
+- **Commit conventions, releases, and branch protection.** Adhere to Conventional Commits 1.0.0 (`feat`, `fix`, `perf`, `refactor`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `revert` with lowercase subject, <= 100 char header) enforced locally via Lefthook (`commit-msg`, `pre-commit` Biome auto-stage, and `pre-push` direct-push guard) and remotely via PR title linting. Direct pushes to `main` are blocked except for author emergency bypass (`ALLOW_DIRECT_MAIN_PUSH=1` and Repository Admin role bypass in `docs/github-ruleset.json`). Automated releases, changelogs, multi-arch GHCR publishing, and SLSA build provenance attestations are managed via Release-Please (`.github/workflows/release.yml`, `ADR-0010`).
+
 ## Context pointers
 
 - `GLOSSARY.md`: consult when naming layers, feature slices, segments, ports, adapters, contracts, resource scopes, live queries, defects, design tokens, theme presets, field primitives, presigned uploads, or test harnesses.
 - `DESIGN.md`: consult when building or modifying UI components, layouts, typography, surface hierarchy, tactile shadows, or `Theme Preset`s (`src/styles/theme.css`).
 - `docs/architecture.md`: consult when editing `getRouter` / `createAppRuntime`, `customFetch` / `defineContract`, `authSessionQueryOptions`, `useLiveQuery`, `ObservabilityPort` adapters, or `server.mjs`.
 - `docs/development.md`: consult when onboarding from template, rebranding or pruning demo slices, adding environment variables, syncing OpenAPI specs, scaffolding a `Feature Slice`, or writing tests.
-- `docs/adr/`: consult before changing FSD layer rules, Orval/Effect contracts, Better Auth guards, SSE live queries, Sentry/Datadog telemetry, Tailwind v4 tokens, `shadcn/ui` forms, Vitest harnesses, or CI/Docker (`ADR-0001` through `ADR-0009`).
+- `docs/adr/`: consult before changing FSD layer rules, Orval/Effect contracts, Better Auth guards, SSE live queries, Sentry/Datadog telemetry, Tailwind v4 tokens, `shadcn/ui` forms, Vitest harnesses, CI/Docker, or release pipeline / git governance (`ADR-0001` through `ADR-0010`).
 - `.agents/skills/verify-tanstack-open-api/SKILL.md`: consult before opening a PR or claiming a user-facing feature works at runtime, and update via `/maintain-verification-skill` when routes, auth, env vars, or test harnesses change.

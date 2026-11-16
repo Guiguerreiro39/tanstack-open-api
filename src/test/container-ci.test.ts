@@ -1,5 +1,9 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import lint from "@commitlint/lint";
+import load from "@commitlint/load";
+import type { LintOptions } from "@commitlint/types";
 import { describe, expect, it } from "vitest";
 
 describe("Container Runtime & CI/CD Configurations", () => {
@@ -80,6 +84,398 @@ describe("Container Runtime & CI/CD Configurations", () => {
       expect(content).toContain("git diff --exit-code src/routeTree.gen.ts");
       expect(content).toContain("docker compose config --quiet");
       expect(content).toContain("docker build");
+    });
+  });
+
+  describe("commitlint.config.mjs", () => {
+    const configPath = resolve(rootDir, "commitlint.config.mjs");
+
+    async function lintCommitMessage(message: string) {
+      const config = await load({}, { file: "commitlint.config.mjs", cwd: rootDir });
+      return lint(message, config.rules, {
+        defaultIgnores: config.defaultIgnores,
+        ignores: config.ignores,
+        parserOpts: config.parserPreset?.parserOpts as LintOptions["parserOpts"],
+        plugins: config.plugins,
+        helpUrl: config.helpUrl,
+      });
+    }
+
+    it("accepts valid Conventional Commits (scoped, unscoped, breaking !, BREAKING CHANGE footer)", async () => {
+      expect(existsSync(configPath)).toBe(true);
+
+      const validMessages = [
+        "feat: add passkey login flow",
+        "fix(tasks): resolve optimistic mutation race condition",
+        "perf(ssr): cache compiled routes in memory runtime",
+        "refactor(api): migrate contract decoder to effect schema",
+        "docs(adr): record release pipeline architecture",
+        "style: apply biome formatting across feature slices",
+        "test(harness): introduce mock event source sse harness",
+        "build(docker): optimize multi-stage cache layers",
+        "ci(workflows): add multi-arch ghcr container publishing",
+        "chore(deps): update dependency @tanstack/react-query",
+        'revert: "feat(tasks): live query streaming"',
+        "feat(api)!: migrate endpoint response schema to envelope format",
+        "refactor(config): remove deprecated backend host variable\n\nBREAKING CHANGE: VITE_BACKEND_HOST has been removed.",
+      ];
+
+      for (const msg of validMessages) {
+        const result = await lintCommitMessage(msg);
+        expect(
+          result.valid,
+          `Expected "${msg}" to be valid, got errors: ${JSON.stringify(result.errors)}`,
+        ).toBe(true);
+      }
+    });
+
+    it("rejects invalid commit messages (missing type, unknown type, uppercase subject, header > 100 chars)", async () => {
+      expect(existsSync(configPath)).toBe(true);
+
+      const missingType = await lintCommitMessage("update tasks list");
+      expect(missingType.valid).toBe(false);
+      expect(
+        missingType.errors.some((e) => e.name === "type-empty" || e.name === "subject-empty"),
+      ).toBe(true);
+
+      const unknownType = await lintCommitMessage("wip(tasks): work in progress");
+      expect(unknownType.valid).toBe(false);
+      expect(unknownType.errors.some((e) => e.name === "type-enum")).toBe(true);
+
+      const pascalCaseSubject = await lintCommitMessage("feat(tasks): AddTaskFiltering");
+      expect(pascalCaseSubject.valid).toBe(false);
+      expect(pascalCaseSubject.errors.some((e) => e.name === "subject-case")).toBe(true);
+
+      const upperCaseSubject = await lintCommitMessage("feat(tasks): ADD TASK FILTERING");
+      expect(upperCaseSubject.valid).toBe(false);
+      expect(upperCaseSubject.errors.some((e) => e.name === "subject-case")).toBe(true);
+
+      const sentenceCaseSubject = await lintCommitMessage("feat(tasks): Add task filtering");
+      expect(sentenceCaseSubject.valid).toBe(false);
+      expect(sentenceCaseSubject.errors.some((e) => e.name === "subject-case")).toBe(true);
+
+      const overlongHeader = await lintCommitMessage(`feat(tasks): ${"a".repeat(95)}`);
+      expect(overlongHeader.valid).toBe(false);
+      expect(overlongHeader.errors.some((e) => e.name === "header-max-length")).toBe(true);
+    });
+  });
+
+  describe("lefthook.yml", () => {
+    const lefthookPath = resolve(rootDir, "lefthook.yml");
+
+    it("exists and configures pre-commit, commit-msg, and pre-push hooks", () => {
+      expect(existsSync(lefthookPath)).toBe(true);
+
+      const content = readFileSync(lefthookPath, "utf8");
+      expect(content).toContain("pre-commit:");
+      expect(content).toContain("stage_fixed: true");
+      expect(content).toMatch(/biome check --write/);
+      expect(content).toContain("commit-msg:");
+      expect(content).toMatch(/commitlint --edit/);
+      expect(content).toContain("pre-push:");
+      expect(content).toContain("scripts/check-branch-push.sh");
+    });
+
+    it("package.json chains lefthook install into prepare script", () => {
+      const packageJsonPath = resolve(rootDir, "package.json");
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+      expect(packageJson.scripts?.prepare).toContain("lefthook install");
+    });
+  });
+
+  describe("scripts/check-branch-push.sh", () => {
+    const scriptPath = resolve(rootDir, "scripts/check-branch-push.sh");
+
+    it("exists, is executable, and blocks direct pushes to main/master without bypass", () => {
+      expect(existsSync(scriptPath)).toBe(true);
+
+      // biome-ignore lint/style/noProcessEnv: subprocess testing requires env options
+      const baseEnv = process.env;
+
+      // Blocked on main branch
+      const resultMain = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "main", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultMain.status).toBe(1);
+      expect(resultMain.stderr).toContain("Direct pushes to 'main' are prohibited");
+      expect(resultMain.stderr).toContain("ALLOW_DIRECT_MAIN_PUSH=1");
+
+      // Blocked on master branch
+      const resultMaster = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "master", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultMaster.status).toBe(1);
+      expect(resultMaster.stderr).toContain("Direct pushes to 'master' are prohibited");
+
+      // Blocked when pre-push receives refs on stdin
+      const resultStdin = spawnSync("bash", [scriptPath], {
+        input: "refs/heads/feature 1111 refs/heads/main 2222\n",
+        env: { ...baseEnv, GIT_BRANCH: "feat/cool", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultStdin.status).toBe(1);
+      expect(resultStdin.stderr).toContain("Direct pushes to 'refs/heads/main' are prohibited");
+
+      // Allowed on feature branch
+      const resultFeature = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "feat/some-feature", ALLOW_DIRECT_MAIN_PUSH: "0" },
+        encoding: "utf8",
+      });
+      expect(resultFeature.status).toBe(0);
+
+      // Allowed on main when ALLOW_DIRECT_MAIN_PUSH=1
+      const resultBypass = spawnSync("bash", [scriptPath], {
+        env: { ...baseEnv, GIT_BRANCH: "main", ALLOW_DIRECT_MAIN_PUSH: "1" },
+        encoding: "utf8",
+      });
+      expect(resultBypass.status).toBe(0);
+    });
+  });
+
+  describe(".github/workflows/pr-title.yml", () => {
+    const workflowPath = resolve(rootDir, ".github/workflows/pr-title.yml");
+
+    it("exists and configures amannn/action-semantic-pull-request with 11 types", () => {
+      expect(existsSync(workflowPath)).toBe(true);
+
+      const content = readFileSync(workflowPath, "utf8");
+      expect(content).toContain("pull_request_target:");
+      expect(content).toContain("pull-requests: read");
+      expect(content).toContain("Lint PR Title (Conventional Commits)");
+      expect(content).toContain("amannn/action-semantic-pull-request@v6");
+
+      const expectedTypes = [
+        "feat",
+        "fix",
+        "perf",
+        "refactor",
+        "docs",
+        "style",
+        "test",
+        "build",
+        "ci",
+        "chore",
+        "revert",
+      ];
+      for (const type of expectedTypes) {
+        expect(content).toContain(type);
+      }
+      expect(content).toMatch(/subjectPattern:\s*\^\(\?!\[A-Z\]\)\.\+\$/);
+    });
+  });
+
+  describe("Release-Please configuration & manifests", () => {
+    const configPath = resolve(rootDir, "release-please-config.json");
+    const manifestPath = resolve(rootDir, ".release-please-manifest.json");
+    const pkgJsonPath = resolve(rootDir, "package.json");
+
+    it("release-please-config.json exists, parses, and configures node release with changelog sections", () => {
+      expect(existsSync(configPath)).toBe(true);
+
+      const config = JSON.parse(readFileSync(configPath, "utf8"));
+      expect(config.packages).toBeDefined();
+      expect(config.packages["."]).toBeDefined();
+
+      const rootPkg = config.packages["."];
+      expect(rootPkg["release-type"]).toBe("node");
+      expect(rootPkg["changelog-path"]).toBe("CHANGELOG.md");
+      expect(rootPkg["bump-minor-pre-major"]).toBe(true);
+      expect(rootPkg["bump-patch-for-minor-pre-major"]).toBe(true);
+      expect(rootPkg["include-component-in-tag"]).toBe(false);
+
+      const sections = rootPkg["changelog-sections"] as Array<{
+        type: string;
+        section: string;
+        hidden?: boolean;
+      }>;
+      expect(Array.isArray(sections)).toBe(true);
+
+      const sectionTypes = sections.map((s) => s.type);
+      expect(sectionTypes).toContain("feat");
+      expect(sectionTypes).toContain("fix");
+      expect(sectionTypes).toContain("perf");
+      expect(sectionTypes).toContain("refactor");
+      expect(sectionTypes).toContain("docs");
+      expect(sectionTypes).toContain("build");
+      expect(sectionTypes).toContain("ci");
+      expect(sectionTypes).toContain("chore");
+
+      const choreSection = sections.find((s) => s.type === "chore");
+      expect(choreSection?.hidden).toBe(true);
+    });
+
+    it(".release-please-manifest.json exists and its root version matches package.json#version", () => {
+      expect(existsSync(manifestPath)).toBe(true);
+
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+
+      expect(manifest["."]).toBeDefined();
+      expect(manifest["."]).toBe(pkgJson.version);
+    });
+  });
+
+  describe(".github/workflows/release.yml", () => {
+    const releaseWorkflowPath = resolve(rootDir, ".github/workflows/release.yml");
+
+    it("exists and configures Release-Please, multi-arch GHCR publishing, and SLSA attestations", () => {
+      expect(existsSync(releaseWorkflowPath)).toBe(true);
+
+      const content = readFileSync(releaseWorkflowPath, "utf8");
+
+      // Push triggers on main and master
+      expect(content).toContain("push:");
+      expect(content).toContain("main");
+      expect(content).toContain("master");
+
+      // Cancel in progress is false
+      expect(content).toContain("cancel-in-progress: false");
+
+      // Security permissions
+      expect(content).toContain("contents: write");
+      expect(content).toContain("pull-requests: write");
+      expect(content).toContain("packages: write");
+      expect(content).toContain("id-token: write");
+      expect(content).toContain("attestations: write");
+
+      // Release job
+      expect(content).toContain("release:");
+      expect(content).toContain("googleapis/release-please-action@v4");
+      expect(content).toContain("config-file: release-please-config.json");
+      expect(content).toContain("manifest-file: .release-please-manifest.json");
+
+      // Container job gated on release_created
+      expect(content).toContain("publish-container:");
+      expect(content).toMatch(/needs\.release\.outputs\.release_created\s*==\s*'?true'?/);
+
+      // Multi-arch platforms
+      expect(content).toContain("docker/setup-qemu-action@v3");
+      expect(content).toContain("linux/amd64,linux/arm64");
+      expect(content).toContain("docker/setup-buildx-action@v3");
+
+      // Dynamic GHCR image derived from github.repository (lowercased)
+      expect(content).toContain("ghcr.io");
+      expect(content).toContain("${" + "{ github.repository }}");
+      // Must not hardcode repository name in image slug definition
+      expect(content).not.toMatch(/ghcr\.io\/[^$]+tanstack-open-api/);
+
+      // Metadata tags
+      expect(content).toContain("docker/metadata-action@v5");
+      expect(content).toContain("type=semver,pattern={{version}}");
+      expect(content).toContain("type=semver,pattern={{major}}.{{minor}}");
+      expect(content).toContain("type=raw,value=latest");
+      expect(content).toContain("type=sha,prefix=sha-");
+
+      // Docker buildx push with Actions cache
+      expect(content).toContain("docker/build-push-action@v6");
+      expect(content).toContain("cache-from: type=gha");
+      expect(content).toContain("cache-to: type=gha,mode=max");
+
+      // SLSA build provenance attestation
+      expect(content).toContain("actions/attest-build-provenance@v2");
+      expect(content).toContain("push-to-registry: true");
+    });
+  });
+
+  describe("GitHub Repository Ruleset & Provisioning Script", () => {
+    const rulesetPath = resolve(rootDir, "docs/github-ruleset.json");
+    const scriptPath = resolve(rootDir, "scripts/setup-github-rulesets.sh");
+    const pkgJsonPath = resolve(rootDir, "package.json");
+    const ciPath = resolve(rootDir, ".github/workflows/ci.yml");
+    const prTitlePath = resolve(rootDir, ".github/workflows/pr-title.yml");
+
+    it("docs/github-ruleset.json exists, targets ~DEFAULT_BRANCH, defines protection rules, and allows admin bypass", () => {
+      expect(existsSync(rulesetPath)).toBe(true);
+
+      const ruleset = JSON.parse(readFileSync(rulesetPath, "utf8"));
+      expect(ruleset.target).toBe("branch");
+      expect(ruleset.enforcement).toBe("active");
+      expect(ruleset.conditions?.ref_name?.include).toContain("~DEFAULT_BRANCH");
+
+      const rules = ruleset.rules as Array<{ type: string; parameters?: Record<string, unknown> }>;
+      const ruleTypes = rules.map((r) => r.type);
+      expect(ruleTypes).toContain("deletion");
+      expect(ruleTypes).toContain("non_fast_forward");
+      expect(ruleTypes).toContain("pull_request");
+      expect(ruleTypes).toContain("required_status_checks");
+
+      const prRule = rules.find((r) => r.type === "pull_request");
+      expect(prRule?.parameters?.required_review_thread_resolution).toBe(true);
+      expect(prRule?.parameters?.required_approving_review_count).toBe(0);
+
+      const statusChecksRule = rules.find((r) => r.type === "required_status_checks");
+      expect(statusChecksRule?.parameters?.strict_required_status_checks_policy).toBe(true);
+
+      const rawChecks = (statusChecksRule?.parameters?.required_status_checks ?? []) as Array<{
+        context: string;
+      }>;
+      const requiredChecks = rawChecks.map((c) => c.context);
+      expect(requiredChecks).toContain("verify");
+      expect(requiredChecks).toContain("docker");
+      expect(requiredChecks).toContain("Lint PR Title (Conventional Commits)");
+
+      // Verify that the status checks match actual CI workflow job names
+      const ciContent = readFileSync(ciPath, "utf8");
+      expect(ciContent).toContain("verify:");
+      expect(ciContent).toContain("docker:");
+
+      const prTitleContent = readFileSync(prTitlePath, "utf8");
+      expect(prTitleContent).toContain("Lint PR Title (Conventional Commits)");
+
+      // Verify Repository Admin bypass (actor_id 5)
+      const bypassActors = ruleset.bypass_actors as Array<{
+        actor_id: number;
+        actor_type: string;
+        bypass_mode: string;
+      }>;
+      expect(
+        bypassActors.some(
+          (a) =>
+            a.actor_id === 5 && a.actor_type === "RepositoryRole" && a.bypass_mode === "always",
+        ),
+      ).toBe(true);
+    });
+
+    it("scripts/setup-github-rulesets.sh exists, is executable, succeeds in --dry-run, and is wired in package.json", () => {
+      expect(existsSync(scriptPath)).toBe(true);
+
+      const dryRunResult = spawnSync("bash", [scriptPath, "--dry-run"], {
+        encoding: "utf8",
+      });
+      expect(dryRunResult.status).toBe(0);
+      expect(dryRunResult.stdout).toContain("[Dry Run]");
+      expect(dryRunResult.stdout).toContain("docs/github-ruleset.json");
+
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+      expect(pkgJson.scripts?.["setup:ruleset"]).toBe("bash scripts/setup-github-rulesets.sh");
+    });
+  });
+
+  describe("Renovate configuration", () => {
+    const renovatePath = resolve(rootDir, "renovate.json5");
+
+    it("renovate.json5 exists and configures semantic commits, ecosystem grouping, and devDependencies automerge", () => {
+      expect(existsSync(renovatePath)).toBe(true);
+
+      const content = readFileSync(renovatePath, "utf8");
+      expect(content).toContain("config:recommended");
+      expect(content).toContain(":semanticCommits");
+      expect(content).toContain(":separateMultipleMajorReleases");
+      expect(content).toContain('"semanticCommitType": "chore"');
+      expect(content).toContain('"semanticCommitScope": "deps"');
+
+      // Ecosystem groups
+      expect(content).toContain("tanstack monorepo");
+      expect(content).toContain("react ecosystem");
+      expect(content).toContain("effect ecosystem");
+      expect(content).toContain("radix ui primitives");
+      expect(content).toContain("lint and formatting tools");
+
+      // Automerge devDependencies
+      expect(content).toContain('"automerge": true');
+      expect(content).toContain('"devDependencies"');
     });
   });
 });

@@ -1,6 +1,6 @@
 # TanStack OpenAPI Starter — Architecture Guide
 
-This document specifies the technical architecture, runtime composition, data flow, design system, and error handling of `tanstack-open-api`. It serves as the primary system reference and aligns directly with the repository's Architecture Decision Records (`ADR-0001` through `ADR-0009`).
+This document specifies the technical architecture, runtime composition, data flow, design system, and error handling of `tanstack-open-api`. It serves as the primary system reference and aligns directly with the repository's Architecture Decision Records (`ADR-0001` through `ADR-0010`).
 
 ---
 
@@ -21,6 +21,7 @@ This document specifies the technical architecture, runtime composition, data fl
 | **`ADR-0007`** | shadcn/ui Catalog, TanStack Form, and Reference Slices | `shadcn/ui` components, TanStack Form with Effect `Schema.standardSchemaV1`, and reference slices (`tasks`, `files`, `showcase`).              |
 | **`ADR-0008`** | Testing Strategy and Runtime Verification              | Boundary-only Vitest 4 harness with MSW v2, `MockEventSource`, `MockXMLHttpRequest`, and the `.agents/skills/verify-tanstack-open-api/` skill. |
 | **`ADR-0009`** | Biome 2 Guardrails, CI Pipeline, and Container Runtime | Biome 2 lint/format enforcement, 5-stage Dockerfile, Node 24 runtime, and `server.mjs` with reverse proxy.                                     |
+| **`ADR-0010`** | Release Pipeline and Git Governance                    | Release-Please automated releases, Lefthook + Commitlint, multi-arch GHCR with SLSA provenance, GitHub Rulesets, and Renovate grouping.        |
 
 ---
 
@@ -284,3 +285,52 @@ flowchart TD
 ```
 
 `server.mjs` handles static asset serving, reverse-proxy streaming to `API_INTERNAL_URL` (preserving cookies, auth headers, and SSE chunking with `X-Accel-Buffering: no`), and delegates all document requests to TanStack Start's SSR handler.
+
+---
+
+## 11. Release Pipeline, Commit Governance & Branch Protection (ADR-0010)
+
+The release lifecycle and git hygiene topology guarantee semantic versioning, reproducible releases, and branch protection across both developer workstations and GitHub:
+
+```mermaid
+flowchart TD
+    subgraph Local_Workstation["Developer Workstation"]
+        Commit["git commit"] --> Biome["Lefthook pre-commit: Biome Auto-Stage"]
+        Commit --> Commitlint["Lefthook commit-msg: Commitlint 1.0.0"]
+        Push["git push origin main"] --> PrePush["Lefthook pre-push: check-branch-push.sh"]
+        PrePush -->|Direct push blocked| Error["Exit 1 (Bypass: ALLOW_DIRECT_MAIN_PUSH=1)"]
+    end
+
+    subgraph CI_PR["Pull Request & Merge"]
+        PR["Open PR"] --> PRTitle["Validate PR Title (amannn/action-semantic-pull-request@v6)"]
+        PR --> CI["ci.yml: verify & docker status checks"]
+        CI & PRTitle --> Merge["Squash and Merge to main"]
+    end
+
+    subgraph Remote_Release["Release-Please Pipeline (release.yml)"]
+        Merge --> RP["Google Release-Please: Evaluates Conventional Commits"]
+        RP --> ReleasePR["Creates / Updates Release PR (chore(main): release X.Y.Z)"]
+        ReleasePR -->|Merged| Tag["Git Tag vX.Y.Z & GitHub Release Notes"]
+        Tag --> Buildx["Multi-Arch Docker Buildx (linux/amd64, linux/arm64)"]
+        Buildx --> GHCR["Push to ghcr.io/<owner>/<repo>"]
+        GHCR --> SLSA["Sigstore OIDC SLSA Build Provenance Attestation"]
+    end
+```
+
+### Two-Tier Commit Message Governance
+
+1. **Local Hook Tier**: Lefthook (`lefthook.yml`) executes `@commitlint/cli` on the `commit-msg` hook and staged Biome formatting/linting on `pre-commit`.
+2. **Remote CI Tier**: `.github/workflows/pr-title.yml` runs `amannn/action-semantic-pull-request@v6` on `pull_request_target` to ensure the squashed commit landing on `main` is strictly Conventional Commits compliant.
+
+### Branch Protection & Author Bypass
+
+- **Local Pre-Push Guard**: `scripts/check-branch-push.sh` blocks direct pushes to `main` and `master` before network egress, with `ALLOW_DIRECT_MAIN_PUSH=1` for author emergency bypass.
+- **Declarative GitHub Ruleset**: `docs/github-ruleset.json` targets `~DEFAULT_BRANCH`, blocks deletion and force-pushes, mandates Pull Requests and passing CI status checks (`verify`, `docker`, and `Lint PR Title (Conventional Commits)`), while granting `bypass_mode: "always"` to `RepositoryRole` ID `5` (Admin). Template clones provision this via `pnpm setup:ruleset` (`scripts/setup-github-rulesets.sh`).
+
+### Container Publishing & SLSA Provenance
+
+When a Release PR is merged, `.github/workflows/release.yml` uses Docker Buildx with QEMU (`linux/amd64`, `linux/arm64`), generates tags dynamically for `ghcr.io/${{ github.repository }}`, and generates cryptographically signed SLSA build provenance attestations via `actions/attest-build-provenance@v2`.
+
+### Grouped Dependency Maintenance
+
+`renovate.json5` groups TanStack, React 19, Effect, Radix UI, and Biome updates into consolidated PRs with `chore(deps): ...` headers, enabling branch automerge for non-breaking `devDependencies`.

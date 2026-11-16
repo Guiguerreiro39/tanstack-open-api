@@ -259,3 +259,46 @@ Server-only runtime variables:
 | `NODE_ENV`         | String | `"development"`           | Node execution environment (`development`, `production`, `test`).         |
 | `PORT`             | Number | `3001`                    | Server port used by Node 24 runtime in `server.mjs`.                      |
 | `HOST`             | String | `"0.0.0.0"`               | Host binding address for production server.                               |
+
+---
+
+## 6. Git Governance, Releases & Branch Protection (ADR-0010)
+
+### Commit Message Conventions & Local Hooks
+
+The repository enforces [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) locally and in CI:
+
+- **Local Hooks via Lefthook (`lefthook.yml`)**: Installed automatically via `pnpm install` (`package.json#prepare`).
+  - `pre-commit`: Executes Biome check and auto-stages formatting fixes in under 35ms.
+  - `commit-msg`: Validates commit messages with `@commitlint/cli` and `commitlint.config.mjs` against 11 types (`feat`, `fix`, `perf`, `refactor`, `docs`, `style`, `test`, `build`, `ci`, `chore`, `revert`), lowercase subjects, and a 100-character header limit.
+  - `pre-push`: `scripts/check-branch-push.sh` intercepts direct pushes to `main` or `master` before network egress, prompting developers to create a feature branch and Pull Request.
+  - **Author Emergency Bypass**: For emergency hotfixes or initial setup, the repository author can bypass the local push check via:
+
+    ```bash
+    ALLOW_DIRECT_MAIN_PUSH=1 git push origin main
+    ```
+
+- **Remote PR Title CI**: `.github/workflows/pr-title.yml` enforces Conventional Commits on all Pull Request titles. When squashed and merged into `main`, GitHub preserves the validated PR title as the commit message.
+
+### Provisioning GitHub Repository Rulesets (`pnpm setup:ruleset`)
+
+Downstream template consumers can replicate main-branch push protection with one command:
+
+```bash
+# Preview validated JSON ruleset payload without mutating remote state
+pnpm setup:ruleset --dry-run
+
+# Provision or update ruleset on GitHub
+pnpm setup:ruleset
+```
+
+This provisions `docs/github-ruleset.json` on the repository default branch, requiring Pull Requests and passing CI status checks (`verify`, `docker`, and `Lint PR Title (Conventional Commits)`), while preserving direct push access for the Repository Admin role (`actor_id: 5`).
+
+### Release Automation via Google Release-Please
+
+- When commits land on `main`, Release-Please (`.github/workflows/release.yml`) updates or opens a Release PR (`chore(main): release X.Y.Z`) with version bumps and categorized `CHANGELOG.md` notes.
+- Merging the Release PR automatically creates the `vX.Y.Z` git tag, publishes the GitHub Release, compiles multi-arch container images (`linux/amd64,linux/arm64`) to `ghcr.io/<owner>/<repo>`, and signs SLSA build provenance attestations with Sigstore OIDC.
+
+### Dependency Maintenance via Renovate
+
+`renovate.json5` groups dependencies into cohesive pull requests (`tanstack monorepo`, `react ecosystem`, `effect ecosystem`, `radix ui primitives`, `lint and formatting tools`) using `chore(deps): ...` headers to prevent spurious application release triggers, with automatic merging of non-breaking devDependencies.

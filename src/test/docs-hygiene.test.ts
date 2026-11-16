@@ -58,6 +58,7 @@ describe("Documentation Suite & Verification Skill Hygiene", () => {
         "test:coverage",
         "generate:api",
         "sync:api",
+        "setup:ruleset",
       ];
       for (const script of requiredScripts) {
         expect(content).toContain(`\`${script}\``);
@@ -77,10 +78,10 @@ describe("Documentation Suite & Verification Skill Hygiene", () => {
   describe("docs/architecture.md", () => {
     const archPath = resolve(rootDir, "docs/architecture.md");
 
-    it("exists and references all ADRs (ADR-0001 through ADR-0009)", () => {
+    it("exists and references all ADRs (ADR-0001 through ADR-0010)", () => {
       expect(existsSync(archPath)).toBe(true);
       const content = readFileSync(archPath, "utf8");
-      for (let i = 1; i <= 9; i++) {
+      for (let i = 1; i <= 10; i++) {
         const adrNum = String(i).padStart(4, "0");
         expect(content).toContain(`ADR-${adrNum}`);
       }
